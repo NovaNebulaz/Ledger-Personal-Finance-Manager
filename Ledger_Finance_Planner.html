@@ -1,0 +1,2451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Personal Finance Planner v7</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+--accent: #2F9E8F;
+--bg: #F4F6F7;
+--panel: #FFFFFF;
+--sidebar-bg: #14203A;
+--sidebar-text: #B8C2D6;
+--text: #1B2430;
+--muted: #6B7686;
+--border: #E4E8EC;
+--positive: #2E9E6B;
+--negative: #D6534F;
+--warning: #C97F1E;
+--radius: 10px;
+--font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+[data-mode="dark"]{
+--bg: #0F1522;
+--panel: #171F30;
+--sidebar-bg: #0A0F1A;
+--sidebar-text: #8B95AA;
+--text: #E7EBF2;
+--muted: #8B95AA;
+--border: #262F42;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+font-family:var(--font);
+background:var(--bg);
+color:var(--text);
+display:flex;
+min-height:100vh;
+font-size:14px;
+-webkit-font-smoothing:antialiased;
+}
+a{color:inherit;}
+
+#sidebar{
+width:220px;
+flex-shrink:0;
+background:var(--sidebar-bg);
+color:var(--sidebar-text);
+display:flex;
+flex-direction:column;
+padding:20px 14px;
+position:sticky;
+top:0;
+height:100vh;
+overflow-y:auto;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 22px 10px;}
+.brand-mark{width:26px;height:26px;border-radius:7px;background:var(--accent);flex-shrink:0;}
+.brand-name{font-weight:600;font-size:15px;color:#fff;letter-spacing:.2px;}
+nav{display:flex;flex-direction:column;gap:2px;margin-top:4px;}
+.nav-item{
+display:flex;align-items:center;gap:10px;
+padding:9px 12px;border-radius:8px;
+cursor:pointer;font-size:13px;font-weight:500;
+color:var(--sidebar-text);
+transition:background .12s ease, color .12s ease;
+user-select:none;
+}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.85;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav-item.active{background:var(--accent);color:#fff;}
+.nav-item.active svg{opacity:1;}
+.sidebar-footer{margin-top:auto;padding:10px;font-size:11px;color:var(--sidebar-text);opacity:.6;line-height:1.5;}
+
+#main{flex:1;padding:28px 34px;max-width:1180px;}
+.view{display:none;}
+.view.active{display:block;}
+.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.page-head h1{font-size:20px;margin:0;font-weight:650;}
+.page-sub{color:var(--muted);font-size:12.5px;margin-top:3px;}
+.head-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+select, input, button{font-family:var(--font);font-size:13.5px;}
+select, input[type=text], input[type=number], input[type=date], input[type=password]{
+background:var(--panel);
+border:1px solid var(--border);
+color:var(--text);
+padding:8px 10px;
+border-radius:8px;
+outline:none;
+}
+select:focus, input:focus{border-color:var(--accent);}
+label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
+.field{margin-bottom:12px;}
+.checkbox-field{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.btn{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;white-space:nowrap;}
+.btn:hover{filter:brightness(1.06);}
+.btn.secondary{background:transparent;color:var(--text);border:1px solid var(--border);}
+.btn.danger{background:transparent;color:var(--negative);border:1px solid var(--border);}
+.btn.small{padding:6px 11px;font-size:12px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+.grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.stat-label{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.stat-value{font-size:22px;font-weight:700;margin-top:6px;}
+.stat-delta{font-size:12px;margin-top:6px;font-weight:600;}
+.stat-delta.up{color:var(--positive);}
+.stat-delta.down{color:var(--negative);}
+.stat-delta.flat{color:var(--muted);}
+
+.grid-charts{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:20px;}
+@media (max-width: 860px){.grid-charts{grid-template-columns:1fr;} .two-col{grid-template-columns:1fr !important;}}
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.chart-card h3{margin:0 0 12px 0;font-size:13.5px;font-weight:650;}
+.chart-wrap{position:relative;height:230px;}
+.chart-wrap.tall{height:280px;}
+.empty-note{color:var(--muted);font-size:12.5px;padding:20px 0;text-align:center;}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:8px 10px;border-bottom:1px solid var(--border);}
+td{padding:10px 10px;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+.row-actions{display:flex;gap:8px;}
+.link-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;}
+.link-btn:hover{color:var(--negative);}
+.link-btn.edit:hover{color:var(--accent);}
+
+.panel-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.panel-title-row h3{margin:0;font-size:14px;font-weight:650;}
+
+.goal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;}
+.goal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.goal-name{font-weight:650;font-size:14.5px;}
+.goal-meta{color:var(--muted);font-size:12px;margin-top:2px;}
+.progress-track{background:var(--border);height:9px;border-radius:6px;overflow:hidden;margin:10px 0 6px 0;}
+.progress-fill{height:100%;background:var(--accent);border-radius:6px;transition:width .3s ease;}
+.progress-fill.warn{background:var(--warning);}
+.progress-fill.over{background:var(--negative);}
+.goal-numbers{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);}
+.goal-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.goal-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:20px 2px 10px;flex-wrap:wrap;}
+.goal-section-head h3{margin:0;font-size:14px;font-weight:700;}
+.goal-section-head .section-sub{color:var(--muted);font-size:12px;margin-top:3px;}
+.goal-section-head.completed{margin-top:26px;padding-top:18px;border-top:1px solid var(--border);}
+.extras-ledger-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.extras-ledger-stats{display:grid;grid-template-columns:repeat(4,minmax(125px,1fr));gap:10px;margin:12px 0 14px;}
+.extras-ledger-stat{border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--bg);}
+.extras-ledger-stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;}
+.extras-ledger-stat .v{font-size:16px;font-weight:750;margin-top:4px;}
+.extras-ledger-table-wrap{overflow-x:auto;}
+.money-in{color:var(--positive);font-weight:700;}
+.money-out{color:var(--negative);font-weight:700;}
+@media (max-width:760px){.extras-ledger-stats{grid-template-columns:1fr 1fr;}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(10,14,22,0.45);display:none;align-items:flex-start;justify-content:center;padding-top:6vh;z-index:50;overflow-y:auto;}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--panel);border-radius:12px;padding:22px 24px;width:400px;max-width:90vw;border:1px solid var(--border);margin-bottom:6vh;}
+.modal h3{margin:0 0 16px 0;font-size:15px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+.swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;display:inline-block;}
+.swatch.selected{border-color:var(--text);}
+.swatch-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:16px;}
+.toggle-row:last-child{border-bottom:none;}
+.toggle{position:relative;width:38px;height:22px;background:var(--border);border-radius:20px;cursor:pointer;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:"";position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:left .15s ease;}
+.toggle.on::after{left:19px;}
+
+.settings-section{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;}
+.settings-section h3{margin:0 0 4px 0;font-size:14px;}
+.settings-section .desc{color:var(--muted);font-size:12px;margin-bottom:14px;}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:100;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+input[type=file]{display:none;}
+
+.banner{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#C97F1E22;border:1px solid var(--warning);color:var(--text);border-radius:var(--radius);padding:12px 16px;margin-bottom:18px;font-size:13px;flex-wrap:wrap;}
+.banner strong{color:var(--warning);}
+.banner.overdue{background:#D6534F22;border-color:var(--negative);}
+.banner.overdue strong{color:var(--negative);}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:650;}
+.pill.paid{background:#2E9E6B22;color:var(--positive);}
+.pill.unpaid{background:#6B768622;color:var(--muted);}
+.pill.overdue{background:#D6534F22;color:var(--negative);}
+.pill.soon{background:#C97F1E22;color:var(--warning);}
+
+#lockOverlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;}
+#lockOverlay.active{display:flex;}
+#lockOverlay .lock-box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px 30px;width:280px;text-align:center;}
+#lockOverlay h2{margin:0 0 6px 0;font-size:16px;}
+#lockOverlay p{color:var(--muted);font-size:12.5px;margin:0 0 16px 0;}
+#lockOverlay input{width:100%;text-align:center;font-size:18px;letter-spacing:4px;margin-bottom:12px;}
+#lockError{color:var(--negative);font-size:12px;min-height:16px;margin-bottom:6px;}
+
+/* Master transaction register */
+.transaction-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;}
+.transaction-toolbar .field{margin:0;min-width:135px;}
+.transaction-toolbar .search-field{min-width:220px;flex:1;}
+.transaction-toolbar input,.transaction-toolbar select{width:100%;}
+.transaction-table-wrap{overflow-x:auto;}
+.transaction-table{min-width:900px;}
+.transaction-amount{font-weight:700;white-space:nowrap;}
+.transaction-amount.in{color:var(--positive);}
+.transaction-amount.out{color:var(--negative);}
+.transaction-amount.internal{color:var(--text);}
+.movement-pill{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;background:var(--border);color:var(--muted);}
+.movement-pill.external-in{background:#2E9E6B22;color:var(--positive);}
+.movement-pill.external-out{background:#D6534F22;color:var(--negative);}
+.master-register-note{display:flex;gap:8px;align-items:flex-start;color:var(--muted);font-size:11.5px;margin-top:10px;line-height:1.5;}
+@media (max-width:640px){.transaction-toolbar .field,.transaction-toolbar .search-field{min-width:100%;width:100%;}}
+.lock-links{display:flex;justify-content:center;margin-top:10px;}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:700;background:var(--border);color:var(--muted);}
+.badge.yes{background:#2E9E6B22;color:var(--positive);}
+.badge.no{background:#6B768622;color:var(--muted);}
+.goal-history{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
+.goal-history-title{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;margin-bottom:6px;}
+.goal-history-row{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;color:var(--muted);padding:3px 0;}
+.goal-history-row strong{color:var(--text);font-weight:650;}
+.recovery-key{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--bg);border:1px solid var(--border);padding:8px 10px;border-radius:8px;display:inline-block;letter-spacing:.04em;word-break:break-all;}
+.allocation-summary{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.allocation-summary.bad{border-color:var(--negative);background:#D6534F12;}
+.allocation-summary.good{border-color:#2E9E6B66;}
+.allocation-summary .allocation-main{font-weight:700;font-size:13px;}
+.allocation-summary .allocation-detail{color:var(--muted);font-size:11.5px;margin-top:3px;}
+.allocation-summary.bad .allocation-main,.allocation-summary.bad .allocation-detail{color:var(--negative);}
+.goal-slider-wrap{margin-top:13px;padding:12px 13px;background:var(--bg);border:1px solid var(--border);border-radius:9px;}
+.goal-slider-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.goal-slider-title{font-size:11.5px;color:var(--muted);font-weight:700;}
+.goal-slider-value{font-size:16px;font-weight:750;color:var(--text);}
+.goal-slider-wrap input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+.goal-slider-foot{display:flex;justify-content:space-between;gap:10px;margin-top:5px;font-size:10.5px;color:var(--muted);}
+.goal-progress-label{font-weight:700;color:var(--text);}
+.payroll-estimate-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;}
+.payroll-estimate-item{padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;}
+.payroll-estimate-item .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;}
+.payroll-estimate-item .v{font-size:17px;font-weight:750;margin-top:4px;}
+.payroll-estimate-note{font-size:11.5px;color:var(--muted);margin-top:10px;}
+
+.mini-note{color:var(--muted);font-size:11.5px;margin-top:8px;}
+
+/* ================= Payroll planner v4 ================= */
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+.profile-card{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:13px 14px;}
+.profile-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px;}
+.profile-card-name{font-weight:700;font-size:13.5px;}
+.profile-card-meta{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45;}
+.profile-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.preview-box{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px 13px;margin-top:12px;}
+.preview-title{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:750;margin-bottom:8px;}
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;}
+.preview-metric{min-width:0;}
+.preview-metric .k{font-size:10.5px;color:var(--muted);font-weight:650;}
+.preview-metric .v{font-size:15px;font-weight:750;margin-top:2px;word-break:break-word;}
+.confidence{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:750;background:var(--border);color:var(--muted);}
+.confidence.high{background:#2E9E6B22;color:var(--positive);}
+.confidence.medium{background:#C97F1E22;color:var(--warning);}
+.confidence.low{background:#D6534F18;color:var(--negative);}
+.goal-insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:10px;}
+.goal-insight{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 10px;}
+.goal-insight .k{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.02em;}
+.goal-insight .v{font-size:12px;font-weight:650;margin-top:3px;line-height:1.4;}
+.goal-status-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px;}
+.badge.paused{background:#C97F1E22;color:var(--warning);}
+.badge.temp{background:#5B8DEF22;color:#5B8DEF;}
+.simulator-controls{display:grid;grid-template-columns:minmax(160px,220px) 1fr;gap:12px;align-items:end;}
+.simulator-summary{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.simulator-table-wrap{overflow-x:auto;margin-top:12px;}
+.timeline{display:flex;flex-direction:column;gap:0;}
+.timeline-row{display:grid;grid-template-columns:92px minmax(170px,1fr) 125px 125px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.timeline-row:last-child{border-bottom:none;}
+.timeline-date{font-size:11.5px;color:var(--muted);font-weight:650;}
+.timeline-main{min-width:0;}
+.timeline-title{font-size:12.5px;font-weight:650;}
+.timeline-sub{font-size:10.5px;color:var(--muted);margin-top:2px;}
+.timeline-amount{text-align:right;font-weight:700;}
+.timeline-running{text-align:right;color:var(--muted);font-size:11.5px;}
+.timeline-positive{color:var(--positive);}
+.timeline-negative{color:var(--negative);}
+.recommend-btn{margin-top:6px;}
+.range-note{font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.4;}
+/* ================= Cash planning v8 ================= */
+.cash-planning-grid{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(360px,1.4fr);gap:14px;margin-bottom:20px;}
+.safe-spend-card,.forecast-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.safe-spend-value{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:7px 0 3px;}
+.safe-spend-value.negative{color:var(--negative);}
+.safe-breakdown{display:grid;gap:8px;margin-top:14px;}
+.safe-breakdown-row{display:flex;justify-content:space-between;gap:12px;padding-top:8px;border-top:1px solid var(--border);font-size:12px;}
+.safe-breakdown-row span:first-child{color:var(--muted);}
+.forecast-grid{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:10px;margin-top:10px;}
+.forecast-horizon{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px;}
+.forecast-horizon .days{font-size:10.5px;color:var(--muted);font-weight:750;text-transform:uppercase;letter-spacing:.04em;}
+.forecast-horizon .balance{font-size:20px;font-weight:800;margin-top:5px;}
+.forecast-horizon .balance.negative{color:var(--negative);}
+.forecast-horizon .meta{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:5px;}
+.forecast-events{margin-top:13px;border-top:1px solid var(--border);padding-top:8px;}
+.forecast-event{display:grid;grid-template-columns:82px minmax(150px,1fr) 95px 105px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11.5px;}
+.forecast-event:last-child{border-bottom:none;}
+.forecast-event .date{color:var(--muted);font-weight:650;}
+.forecast-event .amt{text-align:right;font-weight:700;}
+.forecast-event .bal{text-align:right;color:var(--muted);}
+.transaction-balance{font-weight:700;white-space:nowrap;}
+.transaction-balance.negative{color:var(--negative);}
+@media(max-width:900px){.cash-planning-grid{grid-template-columns:1fr;}}
+@media(max-width:700px){
+  .forecast-grid{grid-template-columns:1fr;}
+  .forecast-event{grid-template-columns:72px minmax(120px,1fr) 86px;}
+  .forecast-event .bal{display:none;}
+}
+
+@media(max-width:700px){
+  .simulator-controls{grid-template-columns:1fr;}
+  .timeline-row{grid-template-columns:78px minmax(130px,1fr) 90px;}
+  .timeline-running{display:none;}
+  .profile-grid{grid-template-columns:1fr;}
+}
+
+</style>
+</head>
+<body>
+
+<div id="lockOverlay">
+<div class="lock-box">
+<h2>Ledger is locked</h2>
+<p>Enter your PIN to continue</p>
+<input type="password" id="lockPinInput" inputmode="numeric" maxlength="6" placeholder="••••">
+<div id="lockError"></div>
+<button class="btn" style="width:100%;" onclick="tryUnlock()">Unlock</button>
+<div class="lock-links"><button class="link-btn edit" onclick="openRecoveryModal()">Forgot PIN? Recovery mode</button></div>
+</div>
+</div>
+
+<div id="sidebar">
+<div class="brand">
+<div class="brand-mark"></div>
+<div class="brand-name">Ledger</div>
+</div>
+<nav>
+<div class="nav-item active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</div>
+<div class="nav-item" data-view="income"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Income</div>
+<div class="nav-item" data-view="transactions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h16"/><path d="M7 3v4M12 10v4M17 17v4"/></svg>Transactions</div>
+<div class="nav-item" data-view="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>Goals</div>
+<div class="nav-item" data-view="budget"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>Budget</div>
+<div class="nav-item" data-view="bills"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Bills</div>
+<div class="nav-item" data-view="debts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>Debts</div>
+<div class="nav-item" data-view="networth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M21 7v6M21 7h-6"/></svg>Net Worth</div>
+<div class="nav-item" data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M4 19h16"/></svg>Reports</div>
+<div class="nav-item" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
+</nav>
+<div class="sidebar-footer">All data stays on this computer, stored in this browser only. Nothing is uploaded anywhere.</div>
+</div>
+
+<div id="main">
+
+<!-- DASHBOARD -->
+<div class="view active" id="view-dashboard">
+<div class="page-head">
+<div><h1>Dashboard</h1><div class="page-sub">Your income, spending, savings and goals at a glance.</div></div>
+<div><select id="monthFilter"></select></div>
+</div>
+
+<div id="billBanner"></div>
+
+<div class="grid-stats" id="statCards"></div>
+
+<div class="cash-planning-grid">
+<div class="safe-spend-card">
+<div class="panel-title-row"><div><h3>Safe to spend</h3><div class="mini-note">Spendable money after reserving unpaid bills until your next expected paycheck.</div></div></div>
+<div id="safeToSpendContent"></div>
+</div>
+<div class="forecast-card">
+<div class="panel-title-row"><div><h3>30 / 60 / 90-day cash forecast</h3><div class="mini-note">Projected from payroll profiles, recurring bills and active goal rules.</div></div></div>
+<div id="cashForecastContent"></div>
+</div>
+</div>
+
+<div class="grid-charts">
+<div class="chart-card"><h3>Income over time</h3><div class="chart-wrap"><canvas id="incomeChart"></canvas></div></div>
+<div class="chart-card">
+<h3>Where savings are going</h3>
+<div class="chart-wrap"><canvas id="goalPieChart"></canvas></div>
+<div id="pieEmptyNote" class="empty-note" style="display:none;">Add money to a goal to see this breakdown.</div>
+</div>
+</div>
+
+<div class="chart-card" style="margin-bottom:20px;">
+<h3>Income vs. amount saved, by month</h3>
+<div class="chart-wrap"><canvas id="barChart"></canvas></div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+<div class="panel-title-row"><h3>Recent paychecks</h3></div>
+<table id="recentTable"><thead><tr><th>Date</th><th>Source</th><th>Amount</th><th>Sent to goals</th></tr></thead><tbody></tbody></table>
+<div id="recentEmpty" class="empty-note" style="display:none;">No paychecks logged yet — add one from the Income tab.</div>
+</div>
+
+<div class="card">
+<div class="panel-title-row"><h3>Monthly money timeline</h3><select id="timelineMonthFilter" onchange="renderMoneyTimeline()"></select></div>
+<div id="moneyTimeline"></div>
+</div>
+</div>
+
+<!-- INCOME -->
+<div class="view" id="view-income">
+<div class="page-head">
+<div><h1>Income</h1><div class="page-sub">Estimate take-home pay from hourly payroll, overtime, taxes and your actual paycheck history.</div></div>
+<div class="head-actions">
+<button class="btn secondary" onclick="openPayrollProfileModal()">+ Payroll profile</button>
+<button class="btn" onclick="openPaycheckModal()">+ Add paycheck</button>
+</div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+<div class="panel-title-row"><h3>Payroll profiles</h3><button class="btn secondary small" onclick="openPayrollProfileModal()">Add job</button></div>
+<div id="payrollProfileList" class="profile-grid"></div>
+<div id="payrollProfileEmpty" class="empty-note" style="display:none;">Add a job profile to estimate gross pay, taxes, overtime and take-home pay before payday.</div>
+</div>
+
+<div class="card" id="payrollEstimateCard" style="margin-bottom:16px;">
+<div class="panel-title-row"><h3>Estimated next payroll, after tax</h3><select id="payrollEstimateProfileFilter" onchange="renderPayrollEstimate()"></select></div>
+<div id="payrollEstimateContent"></div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+<div class="panel-title-row"><h3>By income source</h3></div>
+<table id="sourceTable"><thead><tr><th>Source</th><th>Total received</th><th># Paychecks</th><th>Avg. amount</th></tr></thead><tbody></tbody></table>
+<div id="sourceEmpty" class="empty-note" style="display:none;">Sources will appear here once you log paychecks.</div>
+</div>
+
+<div class="card">
+<table id="incomeTable"><thead><tr><th>Date</th><th>Source</th><th>Hours</th><th>Gross</th><th>After tax</th><th>Auto-saved</th><th></th></tr></thead><tbody></tbody></table>
+<div id="incomeEmpty" class="empty-note" style="display:none;">No paychecks yet. Add your first one to get started.</div>
+</div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div class="view" id="view-transactions">
+<div class="page-head">
+<div><h1>Transactions</h1><div class="page-sub">One register for payroll, expenses, paid bills, goal transfers and Extras activity. Internal transfers are separated from real cash in and cash out so totals are not double-counted.</div></div>
+<div class="head-actions"><button class="btn secondary" onclick="exportMasterTransactionsCSV()">Export current view</button></div>
+</div>
+
+<div class="grid-stats" id="transactionStats"></div>
+
+<div class="card" style="margin-bottom:16px;">
+<div class="transaction-toolbar">
+<div class="field search-field"><label>Search</label><input type="text" id="transactionSearch" placeholder="Merchant, paycheck, goal, category..." oninput="renderTransactions()"></div>
+<div class="field"><label>Month</label><select id="transactionMonthFilter" onchange="renderTransactions()"></select></div>
+<div class="field"><label>Type</label><select id="transactionTypeFilter" onchange="renderTransactions()"><option value="all">All types</option><option value="income">Income</option><option value="expense">Expenses</option><option value="bill">Paid bills</option><option value="goal">Goal transfers</option><option value="extras">Extras</option></select></div>
+<div class="field"><label>Movement</label><select id="transactionMovementFilter" onchange="renderTransactions()"><option value="all">All movement</option><option value="external">External cash flow</option><option value="internal">Internal transfers</option></select></div>
+</div>
+</div>
+
+<div class="card">
+<div class="panel-title-row"><div><h3>Master register</h3><div class="mini-note" id="transactionResultNote"></div></div></div>
+<div class="transaction-table-wrap"><table class="transaction-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category / Source</th><th>Amount</th><th>Spendable balance</th><th>Movement</th><th>Details</th></tr></thead><tbody id="transactionTableBody"></tbody></table></div>
+<div id="transactionEmpty" class="empty-note" style="display:none;">No transactions match these filters.</div>
+<div class="master-register-note"><strong>How totals work:</strong><span>Payroll, expenses and paid bills affect cash flow. Goal and Extras movements are internal, so they stay visible in the register without being counted again as income or spending.</span></div>
+</div>
+</div>
+
+<!-- GOALS -->
+<div class="view" id="view-goals">
+<div class="page-head">
+<div><h1>Goals</h1><div class="page-sub">Create goals first. Then set, pause, temporarily override, or simulate the paycheck percentage for each one.</div></div>
+<button class="btn" onclick="openGoalModal()">+ Add goal</button>
+</div>
+<div id="goalAllocationSummary"></div>
+
+<div class="card" id="extrasGoalCard" style="margin-bottom:14px;">
+<div class="panel-title-row"><div><h3>Extras</h3><div class="mini-note">Money that would push a completed goal over its target is kept here instead.</div></div><div class="stat-value" id="extrasGoalBalance">$0.00</div></div>
+<div class="mini-note" id="extrasGoalNote">Available for future spending or anything you have not assigned to a goal.</div>
+</div>
+
+<div class="card" style="margin-bottom:14px;">
+<div class="panel-title-row"><h3>Payday allocation simulator</h3><span class="mini-note">Preview only. This does not change saved balances.</span></div>
+<div class="simulator-controls">
+<div class="field" style="margin:0;"><label>Simulated after-tax paycheck</label><input type="number" id="goalSimulatorAmount" min="0" step="0.01" style="width:100%;" oninput="renderGoalSimulator()"></div>
+<div class="simulator-summary" id="goalSimulatorSummary"></div>
+</div>
+<div class="simulator-table-wrap"><table><thead><tr><th>Goal</th><th>Status</th><th>Effective %</th><th>Would receive</th><th>To Extras</th></tr></thead><tbody id="goalSimulatorBody"></tbody></table></div>
+</div>
+
+<div class="goal-section-head"><div><h3>Active goals</h3><div class="section-sub">Goals you are still funding or planning to fund.</div></div><span class="badge" id="activeGoalsCount">0 active</span></div>
+<div id="goalsList"></div>
+<div id="goalsEmpty" class="empty-note" style="display:none;">No active goals. Add a new goal or review your completed goals below.</div>
+
+<div class="goal-section-head completed"><div><h3>Completed goals</h3><div class="section-sub">Finished goals are kept here with their completion date and final progress.</div></div><span class="badge yes" id="completedGoalsCount">0 completed</span></div>
+<div id="completedGoalsList"></div>
+<div id="completedGoalsEmpty" class="empty-note" style="display:none;">No completed goals yet.</div>
+
+<div class="card" style="margin-top:18px;">
+<div class="panel-title-row"><div><h3>Extras transaction register</h3><div class="mini-note">A spreadsheet-style register of every tracked Extras deposit and withdrawal, with a running balance.</div></div><div class="extras-ledger-controls"><select id="extrasMonthFilter" onchange="renderExtrasLedger()"></select><select id="extrasTypeFilter" onchange="renderExtrasLedger()"><option value="all">All activity</option><option value="in">Money in</option><option value="out">Money out</option></select></div></div>
+<div class="extras-ledger-stats"><div class="extras-ledger-stat"><div class="k">Current balance</div><div class="v" id="extrasLedgerBalance">$0.00</div></div><div class="extras-ledger-stat"><div class="k">Money in</div><div class="v" id="extrasLedgerIn">$0.00</div></div><div class="extras-ledger-stat"><div class="k">Money out</div><div class="v" id="extrasLedgerOut">$0.00</div></div><div class="extras-ledger-stat"><div class="k">Net change</div><div class="v" id="extrasLedgerNet">$0.00</div></div></div>
+<div class="extras-ledger-table-wrap"><table id="extrasLedgerTable"><thead><tr><th>Date</th><th>Type</th><th>Source</th><th>Details</th><th>Money in</th><th>Money out</th><th>Balance</th></tr></thead><tbody id="extrasLedgerBody"></tbody></table></div>
+<div id="extrasLedgerEmpty" class="empty-note" style="display:none;">No Extras activity matches this filter.</div>
+</div>
+</div>
+
+<!-- BUDGET -->
+<div class="view" id="view-budget">
+<div class="page-head">
+<div><h1>Budget</h1><div class="page-sub">Set monthly budgets per category and track what you spend.</div></div>
+<div class="head-actions">
+<select id="budgetMonthFilter"></select>
+<button class="btn secondary" onclick="openCategoryModal()">+ Category</button>
+<button class="btn" onclick="openExpenseModal()">+ Expense</button>
+</div>
+</div>
+
+<div class="card" id="extrasBudgetCard" style="margin-bottom:16px;">
+<div class="panel-title-row"><div><h3>Extras category</h3><div class="mini-note">Overflow from completed goals is stored here. Choose Extras as the expense funding source to spend from it.</div></div><div class="stat-value" id="extrasBudgetBalance">$0.00</div></div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+<div class="panel-title-row"><h3>Categories this month</h3></div>
+<div id="categoryList"></div>
+<div id="categoryEmpty" class="empty-note" style="display:none;">Add a category (e.g. Groceries, Rent) to start budgeting.</div>
+</div>
+
+<div class="card">
+<div class="panel-title-row"><h3>Expenses</h3></div>
+<table id="expenseTable"><thead><tr><th>Date</th><th>For / Merchant</th><th>Category</th><th>Amount</th><th>Paid from</th><th>Budget?</th><th>Note</th><th></th></tr></thead><tbody></tbody></table>
+<div id="expenseEmpty" class="empty-note" style="display:none;">No expenses logged for this month yet.</div>
+</div>
+</div>
+
+<!-- BILLS -->
+<div class="view" id="view-bills">
+<div class="page-head">
+<div><h1>Bills</h1><div class="page-sub">Recurring bills with due-date reminders. Mark each paid as it clears.</div></div>
+<button class="btn" onclick="openBillModal()">+ Add bill</button>
+</div>
+<div class="card">
+<table id="billsTable"><thead><tr><th>Bill</th><th>Amount</th><th>Due day</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+<div id="billsEmpty" class="empty-note" style="display:none;">No recurring bills added yet.</div>
+</div>
+</div>
+
+<!-- DEBTS -->
+<div class="view" id="view-debts">
+<div class="page-head">
+<div><h1>Debt payoff planner</h1><div class="page-sub">Compare snowball (smallest balance first) vs. avalanche (highest rate first).</div></div>
+<button class="btn" onclick="openDebtModal()">+ Add debt</button>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+<table id="debtsTable"><thead><tr><th>Debt</th><th>Balance</th><th>APR</th><th>Min payment</th><th></th></tr></thead><tbody></tbody></table>
+<div id="debtsEmpty" class="empty-note" style="display:none;">Add your debts (credit cards, loans) to build a payoff plan.</div>
+</div>
+
+<div class="card" id="debtPlanCard" style="display:none;">
+<div class="panel-title-row">
+<h3>Payoff plan</h3>
+<div class="head-actions">
+<select id="strategySelect" onchange="renderDebtPlan()">
+<option value="snowball">Snowball (smallest balance first)</option>
+<option value="avalanche">Avalanche (highest APR first)</option>
+</select>
+<input type="number" id="extraPayment" placeholder="Extra $/mo" style="width:110px;" min="0" step="1" oninput="renderDebtPlan()">
+</div>
+</div>
+<div class="grid-stats" id="debtPlanStats"></div>
+<table id="debtPlanTable"><thead><tr><th>Order</th><th>Debt</th><th>Payoff in</th><th>Payoff date</th></tr></thead><tbody></tbody></table>
+</div>
+</div>
+
+<!-- NET WORTH -->
+<div class="view" id="view-networth">
+<div class="page-head">
+<div><h1>Net Worth</h1><div class="page-sub">Track total assets minus liabilities over time.</div></div>
+<button class="btn" onclick="openNetWorthModal()">+ Add snapshot</button>
+</div>
+<div class="chart-card" style="margin-bottom:16px;">
+<h3>Net worth over time</h3>
+<div class="chart-wrap tall"><canvas id="netWorthChart"></canvas></div>
+<div id="netWorthEmptyNote" class="empty-note" style="display:none;">Add a snapshot to see your trend.</div>
+</div>
+<div class="card">
+<table id="netWorthTable"><thead><tr><th>Date</th><th>Assets</th><th>Liabilities</th><th>Net worth</th><th></th></tr></thead><tbody></tbody></table>
+<div id="netWorthTableEmpty" class="empty-note" style="display:none;">No snapshots yet.</div>
+</div>
+</div>
+
+<!-- REPORTS -->
+<div class="view" id="view-reports">
+<div class="page-head">
+<div><h1>Annual report</h1><div class="page-sub">A full-year summary of income, spending, and savings.</div></div>
+<select id="reportYearFilter"></select>
+</div>
+<div class="grid-stats" id="reportStats"></div>
+<div class="grid-charts">
+<div class="card">
+<div class="panel-title-row"><h3>Monthly breakdown</h3></div>
+<table id="reportMonthlyTable"><thead><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Saved</th><th>Net</th></tr></thead><tbody></tbody></table>
+</div>
+<div class="card">
+<div class="panel-title-row"><h3>Top expense categories</h3></div>
+<table id="reportCategoryTable"><thead><tr><th>Category</th><th>Total spent</th></tr></thead><tbody></tbody></table>
+<div id="reportCategoryEmpty" class="empty-note" style="display:none;">No expenses logged this year.</div>
+</div>
+</div>
+</div>
+
+<!-- SETTINGS -->
+<div class="view" id="view-settings">
+<div class="page-head"><div><h1>Settings</h1><div class="page-sub">Customize the look, manage auto-save rules, security and backups.</div></div></div>
+
+<div class="settings-section">
+<h3>Appearance</h3>
+<div class="desc">Pick an accent color and light or dark mode.</div>
+<label>Accent color</label>
+<div class="swatch-row" id="swatchRow"></div>
+<div style="height:14px;"></div>
+<div class="toggle-row"><div><strong>Dark mode</strong></div><div class="toggle" id="darkToggle" onclick="toggleDarkMode()"></div></div>
+</div>
+
+<div class="settings-section">
+<h3>Auto-save on payday</h3>
+<div class="desc">When this is on, each new after-tax paycheck uses the percentage sliders on your existing goals. If the sliders total more than 100%, automatic splitting pauses until you rebalance them.</div>
+<div class="toggle-row"><div><strong>Enable auto-save</strong></div><div class="toggle" id="autoSaveToggle" onclick="toggleAutoSave()"></div></div>
+<div style="margin-top:8px;">
+<label>Currency symbol</label>
+<input type="text" id="currencyInput" style="width:70px;" maxlength="3">
+<button class="btn secondary" style="margin-left:8px;" onclick="saveCurrency()">Save</button>
+</div>
+</div>
+
+<div class="settings-section">
+<h3>Cash-flow baseline</h3>
+<div class="desc">Set the spendable money you had before your first Ledger transaction. This gives the running-balance and forecast tools a real starting point. Do not include money that was already reserved inside goals.</div>
+<div class="field">
+<label>Opening spendable balance</label>
+<input type="number" id="openingSpendableBalance" min="0" step="0.01" style="width:180px;">
+<button class="btn secondary" style="margin-left:8px;" onclick="saveOpeningSpendableBalance()">Save</button>
+</div>
+<div class="mini-note">Until you add real accounts, Ledger treats this as one combined spendable balance. Extras remains spendable; active goal balances are treated as reserved.</div>
+</div>
+
+<div class="settings-section">
+<h3>Goals & Extras</h3>
+<div class="desc">Choose what Ledger does after a goal reaches exactly 100%. A goal balance itself is always capped at its target.</div>
+<div class="field">
+<label>Future paycheck share after a goal is completed</label>
+<select id="completedGoalBehavior" style="width:100%;" onchange="saveGoalCompletionSettings()">
+<option value="extras">Keep the goal % and route its future share to Extras</option>
+<option value="pause">Automatically pause the completed goal</option>
+<option value="unassigned">Stop using the completed goal % and leave that share unassigned</option>
+</select>
+</div>
+<div class="field">
+<label>Completion notification</label>
+<select id="goalCompletionNotice" style="width:100%;" onchange="saveGoalCompletionSettings()">
+<option value="toast_badge">Toast message + Completed badge</option>
+<option value="badge">Completed badge only</option>
+<option value="toast">Toast message only</option>
+</select>
+</div>
+<div class="mini-note">Any amount that would exceed a goal on the paycheck that completes it is always redirected to Extras. Default behavior also sends that completed goal's future percentage to Extras.</div>
+</div>
+
+<div class="settings-section">
+<h3>Security & recovery</h3>
+<div class="desc">A PIN can lock Ledger on open. Recovery mode can unlock it with either your recovery key or your saved security answer.</div>
+<div class="toggle-row"><div><strong>Require PIN on open</strong><div class="mini-note">The lock will never turn on until a valid PIN has actually been saved.</div></div><div class="toggle" id="pinToggle" onclick="togglePinLock()"></div></div>
+<div id="pinSetupRow" style="margin-top:12px;">
+<label>Set or change a 4–6 digit PIN</label>
+<input type="password" id="pinSetupInput" inputmode="numeric" maxlength="6" style="width:110px;">
+<button class="btn secondary" style="margin-left:8px;" onclick="savePin()">Save PIN</button>
+</div>
+<div style="height:14px;"></div>
+<div class="field">
+<label>Recovery question</label>
+<select id="recoveryQuestion" style="width:100%;">
+<option value="">Choose a question</option>
+<option value="What was the name of your first pet?">What was the name of your first pet?</option>
+<option value="What city were you born in?">What city were you born in?</option>
+<option value="What was your childhood nickname?">What was your childhood nickname?</option>
+<option value="What was the name of your first school?">What was the name of your first school?</option>
+</select>
+</div>
+<div class="field"><label>Recovery answer</label><input type="password" id="recoveryAnswer" placeholder="Answer" style="width:100%;"></div>
+<button class="btn secondary small" onclick="saveRecoveryQuestion()">Save recovery question</button>
+<div style="height:14px;"></div>
+<label>Recovery key</label>
+<div><span class="recovery-key" id="recoveryKeyDisplay">Not generated</span></div>
+<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+<button class="btn secondary small" onclick="generateAndSaveRecoveryKey()">Generate / rotate key</button>
+<button class="btn secondary small" onclick="copyRecoveryKey()">Copy key</button>
+</div>
+<div class="mini-note">Keep the recovery key somewhere separate from this browser. Rotating it invalidates the previous key.</div>
+</div>
+
+<div class="settings-section">
+<h3>Your data</h3>
+<div class="desc">Everything is stored only in this browser on this computer. Export a backup any time, or import one to move your data to another computer.</div>
+<button class="btn secondary" onclick="exportData()">Export full backup (.json)</button>
+<button class="btn secondary" onclick="document.getElementById('importFile').click()">Import backup</button>
+<button class="btn secondary" onclick="exportCSV()">Export transactions (.csv)</button>
+<input type="file" id="importFile" accept="application/json" onchange="importData(event)">
+<div style="height:10px;"></div>
+<button class="btn danger" onclick="confirmClearAll()">Erase all data</button>
+</div>
+</div>
+
+</div>
+
+<!-- Payroll profile modal -->
+<div class="modal-overlay" id="payrollProfileModalOverlay">
+<div class="modal" style="width:500px;">
+<h3 id="payrollProfileModalTitle">Add payroll profile</h3>
+<input type="hidden" id="payrollProfileId">
+<div class="field"><label>Job / source name</label><input type="text" id="profileName" placeholder="e.g. Main job" style="width:100%;"></div>
+<div class="two-col">
+<div class="field"><label>Hourly wage</label><input type="number" id="profileHourlyRate" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Estimated tax / withholding %</label><input type="number" id="profileTaxRate" min="0" max="60" step="0.1" style="width:100%;"></div>
+</div>
+<div class="two-col">
+<div class="field"><label>Typical regular hours / paycheck</label><input type="number" id="profileTypicalHours" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Typical overtime hours / paycheck</label><input type="number" id="profileTypicalOvertime" min="0" step="0.01" value="0" style="width:100%;"></div>
+</div>
+<div class="two-col">
+<div class="field"><label>Pay frequency</label><select id="profilePayFrequency" style="width:100%;"><option value="weekly">Weekly</option><option value="biweekly" selected>Every 2 weeks</option><option value="semimonthly">About twice monthly</option><option value="monthly">Monthly</option></select></div>
+<div class="field"><label>Overtime multiplier</label><input type="number" id="profileOvertimeMultiplier" min="1" max="3" step="0.1" value="1.5" style="width:100%;"></div>
+</div>
+<div class="field"><label>Next payday (optional, improves timeline)</label><input type="date" id="profileNextPayDate" style="width:100%;"></div>
+<div class="mini-note">Tax is treated as an effective withholding percentage for estimation. Actual after-tax paychecks you log are used to improve the prediction confidence and range.</div>
+<div class="modal-actions"><button class="btn secondary" onclick="closeModal('payrollProfileModalOverlay')">Cancel</button><button class="btn" onclick="savePayrollProfile()">Save profile</button></div>
+</div>
+</div>
+
+<!-- Paycheck modal -->
+<div class="modal-overlay" id="paycheckModalOverlay">
+<div class="modal" style="width:520px;">
+<h3 id="paycheckModalTitle">Add paycheck</h3>
+<input type="hidden" id="paycheckId">
+<div class="field"><label>Date</label><input type="date" id="paycheckDate" style="width:100%;" oninput="renderPaycheckPreview()"></div>
+<div class="field"><label>Payroll profile</label><select id="paycheckProfile" style="width:100%;" onchange="onPaycheckProfileChange()"></select></div>
+<div class="field" id="manualPaycheckSourceField"><label>Source / job name</label><input type="text" id="paycheckSource" placeholder="e.g. Main job" style="width:100%;" oninput="renderPaycheckPreview()"></div>
+<div class="two-col">
+<div class="field"><label>Regular hours</label><input type="number" id="paycheckRegularHours" min="0" step="0.01" style="width:100%;" oninput="renderPaycheckPreview()"></div>
+<div class="field"><label>Overtime hours</label><input type="number" id="paycheckOvertimeHours" min="0" step="0.01" style="width:100%;" oninput="renderPaycheckPreview()"></div>
+</div>
+<div class="field"><label>Actual after-tax amount (optional override)</label><input type="number" id="paycheckAmount" min="0" step="0.01" style="width:100%;" placeholder="Leave blank to use estimate" oninput="renderPaycheckPreview()"></div>
+<div id="paycheckPreview" class="preview-box"></div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('paycheckModalOverlay')">Cancel</button>
+<button class="btn" onclick="savePaycheck()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Goal modal -->
+<div class="modal-overlay" id="goalModalOverlay">
+<div class="modal">
+<h3 id="goalModalTitle">Add goal</h3>
+<input type="hidden" id="goalId">
+<div class="field"><label>Goal name</label><input type="text" id="goalName" placeholder="e.g. Emergency fund" style="width:100%;"></div>
+<div class="two-col">
+<div class="field"><label>Target amount</label><input type="number" id="goalTarget" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Already saved</label><input type="number" id="goalCurrent" min="0" step="0.01" value="0" style="width:100%;"></div>
+</div>
+<div class="field"><label>Target date (optional)</label><input type="date" id="goalDate" style="width:100%;"></div>
+<div class="mini-note">After you create the goal, use its slider on the Goals page to choose what percentage of each after-tax paycheck should go to it.</div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('goalModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveGoal()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Temporary goal allocation modal -->
+<div class="modal-overlay" id="temporaryGoalModalOverlay">
+<div class="modal">
+<h3 id="temporaryGoalModalTitle">Temporary paycheck percentage</h3>
+<input type="hidden" id="temporaryGoalId">
+<div class="two-col">
+<div class="field"><label>Temporary percentage</label><input type="number" id="temporaryGoalPercent" min="0" max="100" step="1" style="width:100%;"></div>
+<div class="field"><label>For the next # paychecks</label><input type="number" id="temporaryGoalPaychecks" min="1" max="52" step="1" value="1" style="width:100%;"></div>
+</div>
+<div class="mini-note">The normal slider stays saved underneath. After this many paychecks are logged, Ledger automatically returns to the normal percentage.</div>
+<div class="modal-actions"><button class="btn danger" id="temporaryGoalClearBtn" onclick="clearTemporaryGoal()">Clear temporary rule</button><button class="btn secondary" onclick="closeModal('temporaryGoalModalOverlay')">Cancel</button><button class="btn" onclick="saveTemporaryGoal()">Save</button></div>
+</div>
+</div>
+
+<!-- Goal adjustment modal -->
+<div class="modal-overlay" id="fundsModalOverlay">
+<div class="modal">
+<h3 id="fundsModalTitle">Adjust goal</h3>
+<input type="hidden" id="fundsGoalId">
+<div class="two-col">
+<div class="field"><label>Date</label><input type="date" id="fundsDate" style="width:100%;"></div>
+<div class="field"><label>Adjustment</label><select id="fundsAction" style="width:100%;"><option value="add">Add money</option><option value="remove">Remove money</option><option value="set">Set saved total</option></select></div>
+</div>
+<div class="field"><label>Amount</label><input type="number" id="fundsAmount" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Note (optional)</label><input type="text" id="fundsNote" placeholder="e.g. Moved from checking" style="width:100%;"></div>
+<div class="mini-note">You can make multiple adjustments on the same day. Each change is saved in the goal activity history.</div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('fundsModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveGoalAdjustment()">Save adjustment</button>
+</div>
+</div>
+</div>
+
+<!-- Category modal -->
+<div class="modal-overlay" id="categoryModalOverlay">
+<div class="modal">
+<h3 id="categoryModalTitle">Add category</h3>
+<input type="hidden" id="categoryId">
+<div class="field"><label>Category name</label><input type="text" id="categoryName" placeholder="e.g. Groceries" style="width:100%;"></div>
+<div class="field"><label>Monthly budget</label><input type="number" id="categoryBudget" min="0" step="0.01" style="width:100%;"></div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('categoryModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveCategory()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Expense modal -->
+<div class="modal-overlay" id="expenseModalOverlay">
+<div class="modal">
+<h3 id="expenseModalTitle">Add expense</h3>
+<input type="hidden" id="expenseId">
+<div class="field"><label>Date</label><input type="date" id="expenseDate" style="width:100%;"></div>
+<div class="field"><label>What was it for? / Merchant</label><input type="text" id="expenseFor" placeholder="e.g. Gas at Chevron" style="width:100%;"></div>
+<div class="two-col">
+<div class="field"><label>Category</label><select id="expenseCategory" style="width:100%;"></select></div>
+<div class="field"><label>Amount</label><input type="number" id="expenseAmount" min="0" step="0.01" style="width:100%;"></div>
+</div>
+<div class="two-col">
+<div class="field"><label>Paid from</label><select id="expenseFundingSource" style="width:100%;"><option>Monthly budget</option><option>Extras</option><option>Checking / spending</option><option>Savings</option><option>Cash</option><option>Credit card</option><option>Other</option></select></div>
+<div class="field"><label>Budget handling</label><select id="expenseBudgetUse" style="width:100%;"><option value="yes">Count against category budget</option><option value="no">Do not count against budget</option></select></div>
+</div>
+<div class="field"><label>Note (optional)</label><input type="text" id="expenseNote" style="width:100%;"></div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('expenseModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveExpense()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Bill modal -->
+<div class="modal-overlay" id="billModalOverlay">
+<div class="modal">
+<h3 id="billModalTitle">Add bill</h3>
+<input type="hidden" id="billId">
+<div class="field"><label>Bill name</label><input type="text" id="billName" placeholder="e.g. Rent, Netflix" style="width:100%;"></div>
+<div class="two-col">
+<div class="field"><label>Amount</label><input type="number" id="billAmount" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Due day of month (1–31)</label><input type="number" id="billDueDay" min="1" max="31" step="1" style="width:100%;"></div>
+</div>
+<div class="checkbox-field"><input type="checkbox" id="billAutopay"><label style="margin:0;">Autopay enabled</label></div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('billModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveBill()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Debt modal -->
+<div class="modal-overlay" id="debtModalOverlay">
+<div class="modal">
+<h3 id="debtModalTitle">Add debt</h3>
+<input type="hidden" id="debtId">
+<div class="field"><label>Debt name</label><input type="text" id="debtName" placeholder="e.g. Visa card" style="width:100%;"></div>
+<div class="three-col">
+<div class="field"><label>Balance</label><input type="number" id="debtBalance" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>APR %</label><input type="number" id="debtApr" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Min payment</label><input type="number" id="debtMinPayment" min="0" step="0.01" style="width:100%;"></div>
+</div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('debtModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveDebt()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Net worth modal -->
+<div class="modal-overlay" id="netWorthModalOverlay">
+<div class="modal">
+<h3 id="netWorthModalTitle">Add snapshot</h3>
+<input type="hidden" id="netWorthId">
+<div class="field"><label>Date</label><input type="date" id="netWorthDate" style="width:100%;"></div>
+<div class="two-col">
+<div class="field"><label>Total assets</label><input type="number" id="netWorthAssets" min="0" step="0.01" style="width:100%;"></div>
+<div class="field"><label>Total liabilities</label><input type="number" id="netWorthLiabilities" min="0" step="0.01" style="width:100%;"></div>
+</div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('netWorthModalOverlay')">Cancel</button>
+<button class="btn" onclick="saveNetWorth()">Save</button>
+</div>
+</div>
+</div>
+
+<!-- Recovery modal -->
+<div class="modal-overlay" id="recoveryModalOverlay">
+<div class="modal">
+<h3>Recovery mode</h3>
+<div class="mini-note" id="recoveryHelp" style="margin-bottom:12px;">Enter your recovery key or the answer to your saved security question.</div>
+<div class="field"><label id="recoveryQuestionPrompt">Recovery key or answer</label><input type="password" id="recoveryInput" style="width:100%;"></div>
+<div id="recoveryError" style="color:var(--negative);font-size:12px;min-height:16px;"></div>
+<div class="modal-actions">
+<button class="btn secondary" onclick="closeModal('recoveryModalOverlay')">Cancel</button>
+<button class="btn" onclick="recoverAccess()">Recover access</button>
+</div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= Data layer — all local, this machine only ================= */
+const STORAGE_KEY = "ledger_finance_data_v2";
+
+function defaultData(){
+return {
+paychecks: [],
+payrollProfiles: [],
+extrasBalance: 0,
+extrasTransactions: [],
+goals: [],
+goalAdjustments: [],
+categories: [],
+expenses: [],
+bills: [],
+billPayments: [], // {id, billId, monthKey}
+debts: [],
+netWorth: [],
+settings: {
+accent: "#2F9E8F",
+darkMode: false,
+autoSaveEnabled: true,
+currency: "$",
+pinEnabled: false,
+pin: "",
+recoveryKey: "",
+recoveryQuestion: "",
+recoveryAnswer: "",
+completedGoalBehavior: "extras",
+goalCompletionNotice: "toast_badge",
+openingSpendableBalance: 0
+}
+};
+}
+
+let DATA = loadData();
+let unlocked = !DATA.settings.pinEnabled;
+
+function normalizeData(parsed){
+const d = defaultData();
+const merged = Object.assign(d, parsed || {});
+merged.settings = Object.assign(d.settings, (parsed && parsed.settings) || {});
+merged.extrasBalance = Math.max(0, Number(merged.extrasBalance||0));
+merged.settings.openingSpendableBalance = Math.max(0, Number(merged.settings.openingSpendableBalance||0));
+if(!["extras","pause","unassigned"].includes(merged.settings.completedGoalBehavior)) merged.settings.completedGoalBehavior="extras";
+if(!["toast_badge","badge","toast"].includes(merged.settings.goalCompletionNotice)) merged.settings.goalCompletionNotice="toast_badge";
+["paychecks","payrollProfiles","goals","goalAdjustments","categories","expenses","bills","billPayments","debts","netWorth"].forEach(k=>{ if(!Array.isArray(merged[k])) merged[k]=[]; });
+const hadExtrasLedger=!!(parsed && Array.isArray(parsed.extrasTransactions));
+if(!Array.isArray(merged.extrasTransactions)) merged.extrasTransactions=[];
+if(!hadExtrasLedger && merged.extrasBalance>0){
+  merged.extrasTransactions.push({id:"legacy-extra-"+Date.now().toString(36),date:todayStr(),amount:Math.round(merged.extrasBalance*100)/100,kind:"opening",source:"Opening balance",note:"Extras balance carried forward from an earlier Ledger version",linkType:"migration",linkId:"v5",createdAt:new Date().toISOString()});
+}
+if(merged.extrasTransactions.length){ merged.extrasBalance=Math.max(0,Math.round(merged.extrasTransactions.reduce((sum,t)=>sum+Number(t.amount||0),0)*100)/100); }
+merged.payrollProfiles.forEach(p=>{
+  p.hourlyRate = Math.max(0, Number(p.hourlyRate||0));
+  p.typicalHours = Math.max(0, Number(p.typicalHours||0));
+  p.typicalOvertime = Math.max(0, Number(p.typicalOvertime||0));
+  p.overtimeMultiplier = Math.max(1, Number(p.overtimeMultiplier||1.5));
+  p.taxRate = Math.max(0, Math.min(60, Number(p.taxRate||0)));
+  p.payFrequency = p.payFrequency || "biweekly";
+  p.nextPayDate = p.nextPayDate || "";
+});
+merged.goals.forEach(g=>{
+  g.current = Number(g.current||0);
+  g.target = Number(g.target||0);
+  g.autoPercent = Math.max(0, Math.min(100, Number(g.autoPercent||0)));
+  g.paused = !!g.paused;
+  g.tempPercent = g.tempPercent===null || g.tempPercent===undefined || g.tempPercent==="" ? null : Math.max(0,Math.min(100,Number(g.tempPercent)||0));
+  g.tempPaychecksLeft = Math.max(0, Math.floor(Number(g.tempPaychecksLeft||0)));
+  if(!g.tempPaychecksLeft) g.tempPercent = null;
+  if(g.target>0 && g.current>g.target) g.current=g.target;
+  g.completedAt = g.completedAt || (g.target>0 && g.current>=g.target ? (g.updatedAt||g.createdAt||"") : "");
+});
+merged.expenses.forEach(e=>{
+if(!e.description) e.description = e.merchant || e.note || "";
+if(!e.fundingSource) e.fundingSource = "Monthly budget";
+if(e.countTowardBudget === undefined) e.countTowardBudget = true;
+});
+// Migration guard: old builds could enable the lock before a PIN existed. Never allow that state to lock the user out.
+if(merged.settings.pinEnabled && !/^\d{4,6}$/.test(String(merged.settings.pin||""))){ merged.settings.pinEnabled = false; }
+return merged;
+}
+function loadData(){
+try{
+const raw = localStorage.getItem(STORAGE_KEY);
+if(!raw) return defaultData();
+return normalizeData(JSON.parse(raw));
+}catch(e){
+console.error("Failed to load data, starting fresh.", e);
+return defaultData();
+}
+}
+function saveData(){
+try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); return true; }
+catch(e){ console.error("Failed to save Ledger data.", e); showToast("Could not save data in this browser."); return false; }
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){
+const c = DATA.settings.currency || "$";
+return c + Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escapeHtml(value){ return String(value??"").replace(/[&<>"']/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch])); }
+function safeInlineJson(obj){ return JSON.stringify(obj).replace(/&/g,"&amp;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function monthKey(dateStr){ return (dateStr||"").slice(0,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function todayMonthKey(){ return todayStr().slice(0,7); }
+
+/* ================= Lock screen ================= */
+function showLockIfNeeded(){
+if(DATA.settings.pinEnabled && !unlocked){
+document.getElementById("lockOverlay").classList.add("active");
+} else {
+document.getElementById("lockOverlay").classList.remove("active");
+}
+}
+function tryUnlock(){
+const val = document.getElementById("lockPinInput").value;
+if(val === DATA.settings.pin){
+unlocked = true;
+document.getElementById("lockError").textContent = "";
+document.getElementById("lockPinInput").value = "";
+showLockIfNeeded();
+} else {
+document.getElementById("lockError").textContent = "Incorrect PIN.";
+}
+}
+document.getElementById("lockPinInput").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+
+/* ================= Navigation ================= */
+document.querySelectorAll(".nav-item").forEach(item=>{
+item.addEventListener("click", ()=>{
+document.querySelectorAll(".nav-item").forEach(i=>i.classList.remove("active"));
+document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+item.classList.add("active");
+document.getElementById("view-"+item.dataset.view).classList.add("active");
+renderAll(item.dataset.view);
+});
+});
+
+function renderAll(view){
+if(!view || view==="dashboard") renderDashboard();
+if(!view || view==="income") renderIncome();
+if(!view || view==="transactions") renderTransactions();
+if(!view || view==="goals") renderGoals();
+if(!view || view==="budget") renderBudget();
+if(!view || view==="bills") renderBills();
+if(!view || view==="debts") renderDebts();
+if(!view || view==="networth") renderNetWorth();
+if(!view || view==="reports") renderReports();
+if(!view || view==="settings") renderSettings();
+}
+
+function showToast(msg){
+const t = document.getElementById("toast");
+t.textContent = msg;
+t.classList.add("show");
+setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function closeModal(id){ document.getElementById(id).classList.remove("active"); }
+function openModal(id){ document.getElementById(id).classList.add("active"); }
+
+/* ================= Paychecks + payroll profiles ================= */
+function clampNum(v,min,max){ return Math.max(min,Math.min(max,Number(v)||0)); }
+function frequencyDays(freq){ return freq==="weekly"?7:freq==="biweekly"?14:freq==="semimonthly"?15:30; }
+function frequencyLabel(freq){ return freq==="weekly"?"Weekly":freq==="biweekly"?"Every 2 weeks":freq==="semimonthly"?"About twice monthly":"Monthly"; }
+function profileById(id){ return DATA.payrollProfiles.find(p=>p.id===id) || null; }
+function paychecksForProfile(profile){
+  if(!profile) return [];
+  return DATA.paychecks.filter(p=>p.profileId===profile.id || (!p.profileId && (p.source||"")===profile.name));
+}
+function payrollCalc(profile,regularHours,overtimeHours,taxOverride){
+  const rate=Math.max(0,Number(profile?.hourlyRate||0));
+  const reg=Math.max(0,Number(regularHours||0));
+  const ot=Math.max(0,Number(overtimeHours||0));
+  const mult=Math.max(1,Number(profile?.overtimeMultiplier||1.5));
+  const gross=rate*reg + rate*mult*ot;
+  const taxRate=clampNum(taxOverride===undefined?profile?.taxRate:taxOverride,0,60);
+  const tax=gross*taxRate/100;
+  return {gross,tax,taxRate,net:Math.max(0,gross-tax)};
+}
+function learnedTaxRate(profile){
+  const rows=paychecksForProfile(profile).filter(p=>Number(p.grossAmount)>0 && Number(p.amount)>=0).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+  if(rows.length<2) return null;
+  const gross=rows.reduce((s,p)=>s+Number(p.grossAmount||0),0);
+  const net=rows.reduce((s,p)=>s+Number(p.amount||0),0);
+  if(gross<=0) return null;
+  return clampNum((1-net/gross)*100,0,60);
+}
+function payrollConfidence(samples,amounts,hasProfile,hourSamples){
+  let score=Math.min(55,samples*11)+(hasProfile?15:0)+Math.min(15,hourSamples*5);
+  if(amounts.length>=2){
+    const avg=amounts.reduce((a,b)=>a+b,0)/amounts.length;
+    const sd=Math.sqrt(amounts.reduce((s,x)=>s+(x-avg)*(x-avg),0)/amounts.length);
+    const cv=avg?sd/avg:1;
+    score += cv<=.05?15:cv<=.12?10:cv<=.22?5:0;
+  }
+  score=Math.round(Math.max(5,Math.min(100,score)));
+  return {score,label:score>=75?"High":score>=45?"Medium":"Low",className:score>=75?"high":score>=45?"medium":"low"};
+}
+function estimateHoursForProfile(profile){
+  const rows=paychecksForProfile(profile).filter(p=>Number.isFinite(Number(p.regularHours))).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+  const regRows=rows.map(p=>Number(p.regularHours||0)).filter(v=>v>=0);
+  const otRows=rows.map(p=>Number(p.overtimeHours||0)).filter(v=>v>=0);
+  const expectedReg=regRows.length?regRows.reduce((a,b)=>a+b,0)/regRows.length:Number(profile.typicalHours||0);
+  const expectedOt=otRows.length?otRows.reduce((a,b)=>a+b,0)/otRows.length:Number(profile.typicalOvertime||0);
+  let lowReg,highReg,lowOt,highOt;
+  if(regRows.length>=3){
+    const avg=expectedReg, sd=Math.sqrt(regRows.reduce((s,x)=>s+(x-avg)*(x-avg),0)/regRows.length);
+    lowReg=Math.max(0,avg-sd); highReg=avg+sd;
+  }else{ lowReg=Math.max(0,expectedReg*.85); highReg=expectedReg*1.15; }
+  if(otRows.length>=3){
+    const avg=expectedOt, sd=Math.sqrt(otRows.reduce((s,x)=>s+(x-avg)*(x-avg),0)/otRows.length);
+    lowOt=Math.max(0,avg-sd); highOt=avg+sd;
+  }else{ lowOt=Math.max(0,expectedOt*.5); highOt=expectedOt?expectedOt*1.5:0; }
+  return {expectedReg,expectedOt,lowReg,highReg,lowOt,highOt,samples:rows.length};
+}
+function openPayrollProfileModal(existing){
+  document.getElementById("payrollProfileModalTitle").textContent=existing?"Edit payroll profile":"Add payroll profile";
+  document.getElementById("payrollProfileId").value=existing?existing.id:"";
+  document.getElementById("profileName").value=existing?existing.name:"";
+  document.getElementById("profileHourlyRate").value=existing?existing.hourlyRate:"";
+  document.getElementById("profileTaxRate").value=existing?existing.taxRate:"";
+  document.getElementById("profileTypicalHours").value=existing?existing.typicalHours:"";
+  document.getElementById("profileTypicalOvertime").value=existing?existing.typicalOvertime:0;
+  document.getElementById("profilePayFrequency").value=existing?(existing.payFrequency||"biweekly"):"biweekly";
+  document.getElementById("profileOvertimeMultiplier").value=existing?(existing.overtimeMultiplier||1.5):1.5;
+  document.getElementById("profileNextPayDate").value=existing?(existing.nextPayDate||""):"";
+  openModal("payrollProfileModalOverlay");
+}
+function savePayrollProfile(){
+  const id=document.getElementById("payrollProfileId").value;
+  const name=document.getElementById("profileName").value.trim();
+  const hourlyRate=parseFloat(document.getElementById("profileHourlyRate").value);
+  const taxRate=parseFloat(document.getElementById("profileTaxRate").value)||0;
+  const typicalHours=parseFloat(document.getElementById("profileTypicalHours").value)||0;
+  const typicalOvertime=parseFloat(document.getElementById("profileTypicalOvertime").value)||0;
+  const payFrequency=document.getElementById("profilePayFrequency").value;
+  const overtimeMultiplier=parseFloat(document.getElementById("profileOvertimeMultiplier").value)||1.5;
+  const nextPayDate=document.getElementById("profileNextPayDate").value;
+  if(!name || isNaN(hourlyRate) || hourlyRate<=0){ showToast("Enter a job name and hourly wage."); return; }
+  if(taxRate<0||taxRate>60||typicalHours<0||typicalOvertime<0||overtimeMultiplier<1){ showToast("Check the payroll profile values."); return; }
+  const obj={name,hourlyRate,typicalHours,typicalOvertime,payFrequency,overtimeMultiplier,taxRate,nextPayDate,updatedAt:todayStr()};
+  if(id){ const p=profileById(id); if(!p) return; Object.assign(p,obj); }
+  else DATA.payrollProfiles.push({id:uid(),...obj,createdAt:todayStr()});
+  saveData(); closeModal("payrollProfileModalOverlay"); renderIncome(); renderDashboard(); renderGoals(); showToast("Payroll profile saved.");
+}
+function deletePayrollProfile(id){
+  const p=profileById(id); if(!p) return;
+  if(!confirm(`Delete payroll profile “${p.name}”? Existing paychecks will stay in your history.`)) return;
+  DATA.payrollProfiles=DATA.payrollProfiles.filter(x=>x.id!==id);
+  DATA.paychecks.forEach(pc=>{ if(pc.profileId===id) pc.profileId=""; });
+  saveData(); renderIncome(); renderDashboard(); renderGoals(); showToast("Payroll profile deleted.");
+}
+function populatePaycheckProfileSelect(selectedId=""){
+  const sel=document.getElementById("paycheckProfile");
+  sel.innerHTML='<option value="">Manual / no payroll profile</option>'+DATA.payrollProfiles.map(p=>`<option value="${p.id}">${escapeHtml(p.name)} · ${fmt(p.hourlyRate)}/hr</option>`).join("");
+  sel.value=DATA.payrollProfiles.some(p=>p.id===selectedId)?selectedId:"";
+}
+function onPaycheckProfileChange(){
+  const p=profileById(document.getElementById("paycheckProfile").value);
+  document.getElementById("manualPaycheckSourceField").style.display=p?"none":"block";
+  if(p){
+    document.getElementById("paycheckSource").value=p.name;
+    if(document.getElementById("paycheckRegularHours").value==="") document.getElementById("paycheckRegularHours").value=p.typicalHours||0;
+    if(document.getElementById("paycheckOvertimeHours").value==="") document.getElementById("paycheckOvertimeHours").value=p.typicalOvertime||0;
+  }
+  renderPaycheckPreview();
+}
+function openPaycheckModal(existing){
+  document.getElementById("paycheckModalTitle").textContent = existing ? "Edit paycheck" : "Add paycheck";
+  document.getElementById("paycheckId").value = existing ? existing.id : "";
+  document.getElementById("paycheckDate").value = existing ? existing.date : todayStr();
+  populatePaycheckProfileSelect(existing?(existing.profileId||""):"");
+  const p=existing?profileById(existing.profileId):null;
+  document.getElementById("paycheckSource").value = existing ? (existing.source||"") : (p?p.name:"");
+  document.getElementById("paycheckRegularHours").value = existing && existing.regularHours!==undefined ? existing.regularHours : (p?p.typicalHours:"");
+  document.getElementById("paycheckOvertimeHours").value = existing && existing.overtimeHours!==undefined ? existing.overtimeHours : (p?p.typicalOvertime:"");
+  document.getElementById("paycheckAmount").value = existing ? existing.amount : "";
+  document.getElementById("manualPaycheckSourceField").style.display=p?"none":"block";
+  renderPaycheckPreview();
+  openModal("paycheckModalOverlay");
+}
+function currentPaycheckPreview(){
+  const profile=profileById(document.getElementById("paycheckProfile").value);
+  const source=profile?profile.name:(document.getElementById("paycheckSource").value.trim()||"Unspecified");
+  const reg=Math.max(0,parseFloat(document.getElementById("paycheckRegularHours").value)||0);
+  const ot=Math.max(0,parseFloat(document.getElementById("paycheckOvertimeHours").value)||0);
+  const overrideRaw=document.getElementById("paycheckAmount").value;
+  let calc={gross:0,tax:0,taxRate:0,net:0};
+  if(profile){
+    const learned=learnedTaxRate(profile);
+    const effectiveTax=learned===null?profile.taxRate:(profile.taxRate*.35+learned*.65);
+    calc=payrollCalc(profile,reg,ot,effectiveTax);
+  }
+  const override=overrideRaw===""?null:Math.max(0,parseFloat(overrideRaw)||0);
+  const net=override!==null?override:calc.net;
+  const allocationPct=goalAllocationTotal();
+  const ap=allocationPct<=100?allocationPreview(net):{toGoals:0,toExtras:0,left:net};
+  return {profile,source,reg,ot,...calc,net,override,allocationPct,allocated:ap.toGoals,extrasAllocated:ap.toExtras,left:ap.left};
+}
+function renderPaycheckPreview(){
+  const box=document.getElementById("paycheckPreview"); if(!box) return;
+  const x=currentPaycheckPreview();
+  if(!x.profile && x.override===null){ box.innerHTML='<div class="mini-note">Choose a payroll profile to calculate gross pay and taxes, or enter the actual after-tax amount manually.</div>'; return; }
+  const taxText=x.profile?`${fmt(x.tax)} (${x.taxRate.toFixed(1)}%)`:"Manual amount";
+  box.innerHTML=`<div class="preview-title">Paycheck breakdown preview</div><div class="preview-grid">
+  <div class="preview-metric"><div class="k">Gross estimate</div><div class="v">${x.profile?fmt(x.gross):"—"}</div></div>
+  <div class="preview-metric"><div class="k">Estimated taxes</div><div class="v">${taxText}</div></div>
+  <div class="preview-metric"><div class="k">Take-home</div><div class="v">${fmt(x.net)}</div></div>
+  <div class="preview-metric"><div class="k">Goals</div><div class="v">${x.allocationPct>100?"Paused":fmt(x.allocated)}</div></div>
+  <div class="preview-metric"><div class="k">Extras</div><div class="v">${x.allocationPct>100?"Paused":fmt(x.extrasAllocated||0)}</div></div>
+  <div class="preview-metric"><div class="k">Left after goals + Extras</div><div class="v">${fmt(x.left)}</div></div>
+  </div>${x.override!==null&&x.profile?'<div class="range-note">The actual after-tax override will be saved as the paycheck amount; the gross/hour data still improves future estimates.</div>':''}`;
+}
+function extrasLedgerTotal(){ return (DATA.extrasTransactions||[]).reduce((sum,t)=>sum+Number(t.amount||0),0); }
+function syncExtrasBalance(){ DATA.extrasBalance=Math.max(0,Math.round(extrasLedgerTotal()*100)/100); return DATA.extrasBalance; }
+function extrasBalance(){ return Array.isArray(DATA.extrasTransactions)?Math.max(0,Math.round(extrasLedgerTotal()*100)/100):Math.max(0,Number(DATA.extrasBalance||0)); }
+function recordExtrasTransaction(amount,meta={}){
+  const n=Math.round(Number(amount||0)*100)/100; if(Math.abs(n)<.001)return null;
+  const tx={id:meta.id||uid(),date:meta.date||todayStr(),amount:n,kind:meta.kind||(n>0?"deposit":"withdrawal"),source:meta.source||(n>0?"Extras deposit":"Extras withdrawal"),note:meta.note||"",linkType:meta.linkType||"",linkId:meta.linkId||"",createdAt:new Date().toISOString()};
+  DATA.extrasTransactions.push(tx); syncExtrasBalance(); return tx;
+}
+function creditExtras(amount,meta={}){ const n=Math.round(Math.max(0,Number(amount||0))*100)/100; if(n>0) recordExtrasTransaction(n,{...meta,kind:meta.kind||"deposit"}); return n; }
+function debitExtras(amount,meta={}){ const n=Math.round(Math.max(0,Number(amount||0))*100)/100; if(n>extrasBalance()+.001)return false; if(n>0)recordExtrasTransaction(-n,{...meta,kind:meta.kind||"withdrawal"}); return true; }
+function extrasTransactionsForLink(linkType,linkId){ return (DATA.extrasTransactions||[]).filter(t=>t.linkType===linkType&&t.linkId===linkId); }
+function removeExtrasTransactionsByLink(linkType,linkId){ const before=(DATA.extrasTransactions||[]).length; DATA.extrasTransactions=(DATA.extrasTransactions||[]).filter(t=>!(t.linkType===linkType&&t.linkId===linkId)); const removed=before-DATA.extrasTransactions.length; const sum=extrasLedgerTotal(); if(removed&&sum<-.001) recordExtrasTransaction(Math.abs(Math.round(sum*100)/100),{date:todayStr(),kind:"correction",source:"Balance correction",note:"A linked transaction was edited or deleted after some of its Extras had already been spent. Ledger kept Extras from going below $0.",linkType:"correction",linkId:linkType+":"+linkId}); else syncExtrasBalance(); return removed; }
+function completionUsesBadge(){ return ["toast_badge","badge"].includes(DATA.settings.goalCompletionNotice||"toast_badge"); }
+function completionUsesToast(){ return ["toast_badge","toast"].includes(DATA.settings.goalCompletionNotice||"toast_badge"); }
+function markGoalCompleted(g,date){ if(!g || Number(g.target||0)<=0 || Number(g.current||0)<Number(g.target||0)) return false; const first=!g.completedAt; if(first) g.completedAt=date||todayStr(); return first; }
+function clearGoalCompletionIfNeeded(g){ if(g && Number(g.current||0)<Number(g.target||0)) g.completedAt=""; }
+function allocationPreview(amount){
+  const result={toGoals:0,toExtras:0,left:Math.max(0,Number(amount||0))};
+  if(goalAllocationTotal()>100) return result;
+  DATA.goals.forEach(g=>{
+    const pct=effectiveGoalPercent(g); if(pct<=0)return;
+    const raw=Math.round((Number(amount||0)*pct/100)*100)/100;
+    const remaining=Math.max(0,Number(g.target||0)-Number(g.current||0));
+    const toGoal=Math.min(raw,remaining),toExtras=Math.max(0,raw-toGoal);
+    result.toGoals+=toGoal; result.toExtras+=toExtras;
+  });
+  result.toGoals=Math.round(result.toGoals*100)/100; result.toExtras=Math.round(result.toExtras*100)/100; result.left=Math.max(0,Math.round((Number(amount||0)-result.toGoals-result.toExtras)*100)/100);
+  return result;
+}
+
+function savePaycheck(){
+  const id=document.getElementById("paycheckId").value;
+  const date=document.getElementById("paycheckDate").value;
+  const x=currentPaycheckPreview();
+  if(!date){ showToast("Enter a valid date."); return; }
+  if(!x.profile && x.override===null){ showToast("Choose a payroll profile or enter the actual after-tax amount."); return; }
+  if(x.net<0 || !Number.isFinite(x.net)){ showToast("Check the paycheck values."); return; }
+  const profileId=x.profile?x.profile.id:"";
+  const paycheckId=id||uid();
+  const record={date,source:x.source,amount:Math.round(x.net*100)/100,profileId,regularHours:x.reg,overtimeHours:x.ot,grossAmount:Math.round(x.gross*100)/100,estimatedTax:Math.round(x.tax*100)/100,estimatedTaxRate:x.taxRate,actualOverride:x.override!==null};
+  let allocationResult={allocations:[],extrasAmount:0,completedGoals:[]};
+  if(id){
+    const pc=DATA.paychecks.find(p=>p.id===id);
+    if(pc){
+      (pc.allocations||[]).forEach(a=>{ const g=DATA.goals.find(g=>g.id===a.goalId); if(g){ g.current=Math.max(0,Number(g.current||0)-Number(a.amount||0)); clearGoalCompletionIfNeeded(g); } });
+      if(Number(pc.extrasAmount||0)>0){ const removed=removeExtrasTransactionsByLink("paycheck",id); if(!removed){ const legacy=Math.min(extrasBalance(),Number(pc.extrasAmount||0)); if(legacy>0) debitExtras(legacy,{date,source:`Edited legacy paycheck • ${pc.source||"Income"}`,note:"Reversed prior Extras allocation before recalculating this paycheck",linkType:"paycheckEdit",linkId:id}); } }
+      Object.assign(pc,record);
+      allocationResult=DATA.settings.autoSaveEnabled && goalAllocationTotal()<=100 ? runAutoAllocation(record.amount,false,date,{paycheckId:id,source:record.source}) : allocationResult;
+      pc.allocations=allocationResult.allocations; pc.extrasAmount=allocationResult.extrasAmount;
+    }
+  }else{
+    allocationResult=DATA.settings.autoSaveEnabled && goalAllocationTotal()<=100 ? runAutoAllocation(record.amount,true,date,{paycheckId,source:record.source}) : allocationResult;
+    DATA.paychecks.push({id:paycheckId,...record,allocations:allocationResult.allocations,extrasAmount:allocationResult.extrasAmount});
+  }
+  DATA.paychecks.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  saveData(); closeModal("paycheckModalOverlay"); renderIncome(); renderDashboard(); renderGoals(); renderBudget();
+  if(allocationResult.completedGoals.length && completionUsesToast()){
+    const names=allocationResult.completedGoals.join(", ");
+    showToast(`${names} completed. Any overflow was moved to Extras.`);
+  }else if(DATA.settings.autoSaveEnabled && goalAllocationTotal()>100) showToast("Paycheck saved. Goal auto-save is paused until allocation is 100% or less.");
+  else if(allocationResult.extrasAmount>0) showToast(`Paycheck saved. ${fmt(allocationResult.extrasAmount)} moved to Extras.`);
+  else showToast("Paycheck saved.");
+}
+function runAutoAllocation(amount,consumeTemporary=true,date=todayStr(),context={}){
+  const result={allocations:[],extrasAmount:0,completedGoals:[],extrasDetails:[]};
+  if(goalAllocationTotal()>100) return result;
+  const temporaryUsed=[];
+  DATA.goals.forEach(g=>{
+    const pct=effectiveGoalPercent(g);
+    if(pct>0 && g.tempPercent!==null && Number(g.tempPaychecksLeft)>0 && !g.paused) temporaryUsed.push(g);
+    if(pct>0){
+      const rawAmt=Math.round((amount*pct/100)*100)/100;
+      const remaining=Math.max(0,Number(g.target||0)-Number(g.current||0));
+      const amt=Math.min(rawAmt,remaining);
+      const overflow=Math.max(0,Math.round((rawAmt-amt)*100)/100);
+      if(amt>0){
+        g.current=Math.min(Number(g.target||0),Math.round((Number(g.current||0)+amt)*100)/100);
+        result.allocations.push({goalId:g.id,amount:amt,percent:pct});
+        if(markGoalCompleted(g,date)) result.completedGoals.push(g.name);
+      }
+      if(overflow>0){ result.extrasAmount+=overflow; result.extrasDetails.push({goalId:g.id,goalName:g.name,amount:overflow}); }
+    }
+  });
+  result.extrasAmount=Math.round(result.extrasAmount*100)/100;
+  if(result.extrasAmount>0) creditExtras(result.extrasAmount,{date,source:`Paycheck • ${context.source||"Income"}`,note:result.extrasDetails.map(x=>`${x.goalName}: ${fmt(x.amount)}`).join(" · ")||"Goal overflow/completed-goal allocation",linkType:"paycheck",linkId:context.paycheckId||""});
+  if(consumeTemporary) temporaryUsed.forEach(g=>{ g.tempPaychecksLeft=Math.max(0,Number(g.tempPaychecksLeft||0)-1); if(!g.tempPaychecksLeft) g.tempPercent=null; });
+  return result;
+}
+function deletePaycheck(id){
+  const pc=DATA.paychecks.find(p=>p.id===id); if(!pc) return;
+  if(!confirm("Delete this paycheck? Any amounts it auto-saved will be removed from those goals and Extras.")) return;
+  (pc.allocations||[]).forEach(a=>{ const g=DATA.goals.find(g=>g.id===a.goalId); if(g){ g.current=Math.max(0,Number(g.current||0)-Number(a.amount||0)); clearGoalCompletionIfNeeded(g); } });
+  if(Number(pc.extrasAmount||0)>0){ const removed=removeExtrasTransactionsByLink("paycheck",id); if(!removed){ const legacy=Math.min(extrasBalance(),Number(pc.extrasAmount||0)); if(legacy>0) debitExtras(legacy,{date:todayStr(),source:`Deleted legacy paycheck • ${pc.source||"Income"}`,note:"Removed the Extras amount associated with a paycheck from an earlier Ledger version",linkType:"paycheckDelete",linkId:id}); } }
+  DATA.paychecks=DATA.paychecks.filter(p=>p.id!==id); saveData(); renderIncome(); renderDashboard(); renderGoals(); renderBudget(); showToast("Paycheck deleted.");
+}
+
+/* ================= Goals ================= */
+function openGoalModal(existing){
+  document.getElementById("goalModalTitle").textContent=existing?"Edit goal":"Add goal";
+  document.getElementById("goalId").value=existing?existing.id:"";
+  document.getElementById("goalName").value=existing?existing.name:"";
+  document.getElementById("goalTarget").value=existing?existing.target:"";
+  document.getElementById("goalCurrent").value=existing?existing.current:0;
+  document.getElementById("goalDate").value=existing?(existing.targetDate||""):"";
+  openModal("goalModalOverlay");
+}
+function saveGoal(){
+  const id=document.getElementById("goalId").value;
+  const name=document.getElementById("goalName").value.trim();
+  const target=parseFloat(document.getElementById("goalTarget").value);
+  const requestedCurrent=parseFloat(document.getElementById("goalCurrent").value)||0;
+  const targetDate=document.getElementById("goalDate").value;
+  if(!name||isNaN(target)||target<=0){ showToast("Enter a goal name and a target amount."); return; }
+  if(requestedCurrent<0){ showToast("Saved amount cannot be negative."); return; }
+  const current=Math.min(requestedCurrent,target),overflow=Math.max(0,Math.round((requestedCurrent-target)*100)/100);
+  let justCompleted=false, savedGoalId=id;
+  if(id){
+    const g=DATA.goals.find(g=>g.id===id); if(!g){ showToast("That goal could not be found."); return; }
+    const oldCurrent=Number(g.current||0); Object.assign(g,{name,target,current,targetDate,updatedAt:todayStr()});
+    clearGoalCompletionIfNeeded(g); justCompleted=markGoalCompleted(g,todayStr());
+    const delta=Math.round((current-oldCurrent)*100)/100;
+    if(Math.abs(delta)>=.01) DATA.goalAdjustments.push({id:uid(),goalId:id,date:todayStr(),amount:delta,note:"Saved total edited",kind:"edit"});
+  }else{
+    const newId=uid(),g={id:newId,name,target,current,targetDate,autoPercent:0,paused:false,tempPercent:null,tempPaychecksLeft:0,createdAt:todayStr(),updatedAt:todayStr(),completedAt:""};
+    savedGoalId=newId; DATA.goals.push(g); justCompleted=markGoalCompleted(g,todayStr());
+    if(current>0) DATA.goalAdjustments.push({id:uid(),goalId:newId,date:todayStr(),amount:current,note:"Starting balance",kind:"starting"});
+  }
+  if(overflow>0) creditExtras(overflow,{date:todayStr(),source:`Goal overflow • ${name}`,note:`Amount above the ${fmt(target)} goal target`,linkType:"goal",linkId:savedGoalId});
+  saveData(); closeModal("goalModalOverlay"); renderGoals(); renderDashboard(); renderBudget();
+  if(justCompleted && completionUsesToast()) showToast(`${name} completed. ${overflow>0?fmt(overflow)+" moved to Extras.":""}`.trim());
+  else if(overflow>0) showToast(`Goal capped at ${fmt(target)}. ${fmt(overflow)} moved to Extras.`);
+  else showToast(id?"Goal updated.":"Goal created. Set its paycheck percentage with the slider.");
+}
+function effectiveGoalPercent(g){
+  if(!g || g.paused) return 0;
+  const completed=Number(g.target||0)>0 && Number(g.current||0)>=Number(g.target||0);
+  if(completed && (DATA.settings.completedGoalBehavior||"extras")!=="extras") return 0;
+  if(g.tempPercent!==null && g.tempPercent!==undefined && Number(g.tempPaychecksLeft)>0) return clampNum(g.tempPercent,0,100);
+  return clampNum(g.autoPercent,0,100);
+}
+function goalAllocationTotal(){ return DATA.goals.reduce((sum,g)=>sum+effectiveGoalPercent(g),0); }
+function previewGoalAllocation(id,value){
+  const pct=clampNum(value,0,100); const out=document.getElementById("goalAllocationValue-"+id); if(out) out.textContent=pct.toFixed(0)+"%";
+  const g=DATA.goals.find(x=>x.id===id); const est=payrollEstimate(); const contrib=document.getElementById("goalContributionEstimate-"+id);
+  if(contrib){
+    const effective=g&&g.paused?0:(g&&g.tempPercent!==null&&Number(g.tempPaychecksLeft)>0?Number(g.tempPercent):pct);
+    contrib.textContent=est?`Est. ${fmt(est.amount*effective/100)} from next paycheck`:"Add payroll history or a payroll profile to estimate the dollar amount";
+  }
+  renderAllocationSummaryFromDom(); renderGoalSimulator();
+}
+function saveGoalAllocation(id,value){
+  const g=DATA.goals.find(g=>g.id===id); if(!g) return;
+  g.autoPercent=clampNum(Math.round(Number(value)||0),0,100); g.updatedAt=todayStr(); saveData(); renderGoals(); renderDashboard();
+}
+function allocationTotalFromDom(){
+  return DATA.goals.reduce((sum,g)=>{
+    if(g.paused) return sum;
+    const completed=Number(g.target||0)>0 && Number(g.current||0)>=Number(g.target||0);
+    if(completed && (DATA.settings.completedGoalBehavior||"extras")!=="extras") return sum;
+    if(g.tempPercent!==null && Number(g.tempPaychecksLeft)>0) return sum+clampNum(g.tempPercent,0,100);
+    const slider=document.getElementById("goalAllocationSlider-"+g.id); return sum+(slider?clampNum(slider.value,0,100):clampNum(g.autoPercent,0,100));
+  },0);
+}
+function renderAllocationSummaryFromDom(){
+  const box=document.getElementById("goalAllocationSummary"); if(!box) return; if(!DATA.goals.length){ box.innerHTML=""; return; }
+  const total=allocationTotalFromDom(),over=Math.max(0,total-100),free=Math.max(0,100-total),est=payrollEstimate();
+  const dollars=est?fmt(est.amount*free/100):null;
+  if(total>100) box.innerHTML=`<div class="allocation-summary bad"><div><div class="allocation-main">Allocation unbalanced: ${total.toFixed(0)}% selected</div><div class="allocation-detail">You are ${over.toFixed(0)}% over the available paycheck. Lower a normal slider, pause a goal, or lower a temporary rule. Automatic goal splitting is paused above 100%.</div></div><span class="badge no">Needs adjustment</span></div>`;
+  else box.innerHTML=`<div class="allocation-summary good"><div><div class="allocation-main">${total.toFixed(0)}% assigned · ${free.toFixed(0)}% remains available</div><div class="allocation-detail">${est?`On the estimated ${fmt(est.amount)} paycheck, about ${dollars} remains after goal transfers.`:"Add payroll history or a profile to estimate the remaining dollars."}</div></div><span class="badge yes">Balanced</span></div>`;
+}
+function toggleGoalPause(id){ const g=DATA.goals.find(g=>g.id===id); if(!g)return; g.paused=!g.paused; g.updatedAt=todayStr(); saveData(); renderGoals(); renderDashboard(); showToast(g.paused?"Goal contributions paused.":"Goal contributions resumed."); }
+function openTemporaryGoal(id){
+  const g=DATA.goals.find(g=>g.id===id); if(!g)return;
+  document.getElementById("temporaryGoalId").value=id; document.getElementById("temporaryGoalModalTitle").textContent=`Temporary % for ${g.name}`;
+  document.getElementById("temporaryGoalPercent").value=g.tempPercent!==null?g.tempPercent:g.autoPercent||0;
+  document.getElementById("temporaryGoalPaychecks").value=g.tempPaychecksLeft||1;
+  document.getElementById("temporaryGoalClearBtn").style.display=g.tempPercent!==null&&g.tempPaychecksLeft>0?"inline-block":"none"; openModal("temporaryGoalModalOverlay");
+}
+function saveTemporaryGoal(){
+  const g=DATA.goals.find(g=>g.id===document.getElementById("temporaryGoalId").value); if(!g)return;
+  const pct=parseFloat(document.getElementById("temporaryGoalPercent").value),count=parseInt(document.getElementById("temporaryGoalPaychecks").value);
+  if(isNaN(pct)||pct<0||pct>100||!count||count<1||count>52){ showToast("Use 0–100% and 1–52 paychecks."); return; }
+  g.tempPercent=Math.round(pct); g.tempPaychecksLeft=count; g.updatedAt=todayStr(); saveData(); closeModal("temporaryGoalModalOverlay"); renderGoals(); renderDashboard(); showToast("Temporary goal percentage saved.");
+}
+function clearTemporaryGoal(){
+  const g=DATA.goals.find(g=>g.id===document.getElementById("temporaryGoalId").value); if(!g)return;
+  g.tempPercent=null; g.tempPaychecksLeft=0; saveData(); closeModal("temporaryGoalModalOverlay"); renderGoals(); renderDashboard(); showToast("Temporary rule cleared.");
+}
+function deleteGoal(id){
+  const g=DATA.goals.find(g=>g.id===id); if(!g)return;
+  if(!confirm(`Delete “${g.name}”? Its progress and goal activity will be removed.`)) return;
+  DATA.goals=DATA.goals.filter(g=>g.id!==id); DATA.goalAdjustments=DATA.goalAdjustments.filter(a=>a.goalId!==id); DATA.paychecks.forEach(p=>{p.allocations=(p.allocations||[]).filter(a=>a.goalId!==id);});
+  saveData(); renderGoals(); renderDashboard(); showToast("Goal deleted.");
+}
+function goalActivity(goalId){
+  const manual=DATA.goalAdjustments.filter(a=>a.goalId===goalId).map(a=>({date:a.date,amount:Number(a.amount||0),note:a.note||"Manual adjustment",kind:a.kind||"manual"}));
+  const automatic=[]; DATA.paychecks.forEach(p=>(p.allocations||[]).forEach(a=>{if(a.goalId===goalId)automatic.push({date:p.date,amount:Number(a.amount||0),note:`Auto-save from ${p.source||"paycheck"}`,kind:"paycheck"});}));
+  return manual.concat(automatic).sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+function countProjectedPaychecks(targetDate,est){
+  const target=parseDateOnly(targetDate); if(!target||!est||!est.cadenceDays) return 0;
+  let next=parseDateOnly(est.nextDate); if(!next){ next=new Date(); next.setHours(0,0,0,0); next.setDate(next.getDate()+est.cadenceDays); }
+  let n=0,guard=0; while(next<=target&&guard<520){n++;next=new Date(next);next.setDate(next.getDate()+est.cadenceDays);guard++;} return n;
+}
+function recommendedGoalPercent(g,est){
+  if(!g.targetDate||!est||est.amount<=0) return null;
+  const periods=countProjectedPaychecks(g.targetDate,est); if(periods<=0) return {requiredPct:Infinity,periods:0};
+  const remaining=Math.max(0,Number(g.target||0)-Number(g.current||0));
+  return {requiredPct:remaining/(periods*est.amount)*100,periods};
+}
+function projectGoalCompletion(g,est){
+  if(Number(g.current||0)>=Number(g.target||0)) return {text:"Goal already complete",date:todayStr(),paychecks:0};
+  if(!est||!est.amount||!est.cadenceDays) return {text:"Need payroll estimate and cadence",date:null,paychecks:null};
+  let balance=Number(g.current||0),date=parseDateOnly(est.nextDate); if(!date){date=new Date();date.setHours(0,0,0,0);date.setDate(date.getDate()+est.cadenceDays);}
+  let tempLeft=Number(g.tempPaychecksLeft||0),n=0;
+  while(balance<Number(g.target||0)&&n<520){
+    let pct=g.paused?0:(tempLeft>0&&g.tempPercent!==null?Number(g.tempPercent):Number(g.autoPercent||0));
+    if(pct<=0) return {text:g.paused?"Paused — no completion date":"Set a paycheck % to project completion",date:null,paychecks:null};
+    balance+=est.amount*clampNum(pct,0,100)/100; n++; if(tempLeft>0)tempLeft--; if(balance>=Number(g.target||0))break; date=new Date(date);date.setDate(date.getDate()+est.cadenceDays);
+  }
+  return n>=520?{text:"More than 10 years at the current setting",date:null,paychecks:n}:{text:`Around ${todaySafeDate(date)} · ${n} paycheck${n===1?"":"s"}`,date:todaySafeDate(date),paychecks:n};
+}
+function applyRecommendedGoalPercent(id){
+  const g=DATA.goals.find(g=>g.id===id),est=payrollEstimate(); if(!g)return; const rec=recommendedGoalPercent(g,est);
+  if(!rec||!Number.isFinite(rec.requiredPct)){ showToast("Add a target date and payroll estimate first."); return; }
+  if(rec.requiredPct>100){ showToast("This target needs more than 100% per paycheck. Extend the date or increase expected income."); return; }
+  g.autoPercent=Math.max(0,Math.min(100,Math.ceil(rec.requiredPct))); g.updatedAt=todayStr(); saveData(); renderGoals(); renderDashboard(); showToast(`Goal set to ${g.autoPercent}%.`);
+}
+function renderGoals(){
+  const list=document.getElementById("goalsList"),completedList=document.getElementById("completedGoalsList"),empty=document.getElementById("goalsEmpty"),completedEmpty=document.getElementById("completedGoalsEmpty");
+  list.innerHTML=""; completedList.innerHTML="";
+  const activeGoals=DATA.goals.filter(g=>!(Number(g.target||0)>0&&Number(g.current||0)>=Number(g.target||0))),completedGoals=DATA.goals.filter(g=>Number(g.target||0)>0&&Number(g.current||0)>=Number(g.target||0));
+  empty.style.display=activeGoals.length?"none":"block"; completedEmpty.style.display=completedGoals.length?"none":"block";
+  const activeCount=document.getElementById("activeGoalsCount"),completedCount=document.getElementById("completedGoalsCount"); if(activeCount)activeCount.textContent=`${activeGoals.length} active`; if(completedCount)completedCount.textContent=`${completedGoals.length} completed`;
+  const est=payrollEstimate();
+  const extrasEl=document.getElementById("extrasGoalBalance"); if(extrasEl) extrasEl.textContent=fmt(extrasBalance());
+  const extrasNote=document.getElementById("extrasGoalNote"); if(extrasNote) extrasNote.textContent=(DATA.settings.completedGoalBehavior||"extras")==="extras"?"Completed goals keep their active percentage and route that future share here.":"Only overflow from the paycheck that completes a goal is routed here with the current completion setting.";
+  DATA.goals.forEach(g=>{
+    const target=Number(g.target||0),current=Number(g.current||0),pctRaw=target?current/target*100:0,pct=Math.min(100,Math.max(0,pctRaw)),remaining=Math.max(0,target-current),completed=target>0&&current>=target;
+    const allocationPct=clampNum(g.autoPercent,0,100),effective=effectiveGoalPercent(g),nextContribution=est?est.amount*effective/100:0;
+    const activity=goalActivity(g.id).slice(0,4),proj=projectGoalCompletion(g,est),rec=recommendedGoalPercent(g,est);
+    let recText="Set a target date to get a recommendation",recButton="";
+    if(g.targetDate&&est){
+      if(rec&&rec.periods===0) recText="Target date is before the next estimated paycheck";
+      else if(rec&&Number.isFinite(rec.requiredPct)){
+        recText=rec.requiredPct<=100?`${Math.ceil(rec.requiredPct)}% per paycheck to target ${g.targetDate}`:`Needs ${rec.requiredPct.toFixed(0)}% per paycheck — target is not reachable at current estimated pay`;
+        if(rec.requiredPct<=100) recButton=`<button class="btn secondary small recommend-btn" onclick="applyRecommendedGoalPercent('${g.id}')">Use ${Math.ceil(rec.requiredPct)}%</button>`;
+      }
+    }
+    const historyHtml=activity.length?`<div class="goal-history"><div class="goal-history-title">Recent activity</div>${activity.map(a=>`<div class="goal-history-row"><span>${a.date} · ${escapeHtml(a.note)}</span><strong>${a.amount>=0?"+":"-"}${fmt(Math.abs(a.amount))}</strong></div>`).join("")}</div>`:"";
+    const status=[]; if(completed)status.push(`<span class="badge yes">Completed${g.completedAt?` · ${g.completedAt}`:""}</span>`); if(g.paused)status.push('<span class="badge paused">Paused</span>'); if(g.tempPercent!==null&&Number(g.tempPaychecksLeft)>0)status.push(`<span class="badge temp">Temporary ${Number(g.tempPercent).toFixed(0)}% · ${g.tempPaychecksLeft} paycheck${g.tempPaychecksLeft===1?"":"s"} left</span>`);
+    const row=document.createElement("div"); row.className="goal-card"; row.innerHTML=`
+    <div class="goal-top"><div><div class="goal-name">${escapeHtml(g.name)}</div><div class="goal-meta">${g.targetDate?`Target ${g.targetDate}`:"No target date"}</div><div class="goal-status-row">${status.join("")}</div></div>${completionUsesBadge()?`<div class="badge ${completed?'yes':'no'}"><span class="goal-progress-label">${Math.min(100,pctRaw).toFixed(1)}%</span>&nbsp; complete</div>`:""}</div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+    <div class="goal-numbers"><span>${fmt(current)} saved of ${fmt(target)}</span><span>${completed?'Goal complete':fmt(remaining)+' remaining'}</span></div>
+    <div class="goal-insights"><div class="goal-insight"><div class="k">Projected completion</div><div class="v">${proj.text}</div></div><div class="goal-insight"><div class="k">Recommended allocation</div><div class="v">${recText}</div>${recButton}</div></div>
+    <div class="goal-slider-wrap"><div class="goal-slider-head"><div><div class="goal-slider-title">Normal paycheck allocation</div><div class="mini-note" id="goalContributionEstimate-${g.id}">${est?`Effective now: ${effective.toFixed(0)}% · est. ${fmt(nextContribution)} next paycheck`:"Add payroll history or a payroll profile to estimate dollars"}</div></div><div class="goal-slider-value" id="goalAllocationValue-${g.id}">${allocationPct.toFixed(0)}%</div></div>
+    <input id="goalAllocationSlider-${g.id}" class="goal-allocation-slider" type="range" min="0" max="100" step="1" value="${allocationPct}" aria-label="Normal percent of each paycheck for ${escapeHtml(g.name)}" oninput="previewGoalAllocation('${g.id}',this.value)" onchange="saveGoalAllocation('${g.id}',this.value)">
+    <div class="goal-slider-foot"><span>0%</span><span>${g.tempPercent!==null&&Number(g.tempPaychecksLeft)>0?`Temporary override currently uses ${Number(g.tempPercent).toFixed(0)}%`:"100% max for this goal"}</span></div></div>
+    <div class="goal-actions"><button class="btn small" onclick="openAddFunds('${g.id}')">Adjust saved amount</button><button class="btn secondary small" onclick="toggleGoalPause('${g.id}')">${g.paused?"Resume":"Pause"}</button><button class="btn secondary small" onclick="openTemporaryGoal('${g.id}')">Temporary %</button><button class="btn secondary small" onclick='openGoalModal(${safeInlineJson(g)})'>Edit goal details</button><button class="btn danger small" onclick="deleteGoal('${g.id}')">Delete</button></div>${historyHtml}`;
+    (completed?completedList:list).appendChild(row);
+  });
+  renderAllocationSummaryFromDom();
+  const sim=document.getElementById("goalSimulatorAmount"); if(sim&&sim.value===""&&est)sim.value=est.amount.toFixed(2); renderGoalSimulator(); renderExtrasLedger();
+}
+function populateExtrasMonthFilter(){
+  const sel=document.getElementById("extrasMonthFilter"); if(!sel)return;
+  const months=Array.from(new Set((DATA.extrasTransactions||[]).map(t=>monthKey(t.date)).filter(Boolean))).sort().reverse(); const prev=sel.value;
+  sel.innerHTML=`<option value="all">All time</option>`+months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join(""); sel.value=(prev==="all"||months.includes(prev))?prev:"all";
+}
+function renderExtrasLedger(){
+  const body=document.getElementById("extrasLedgerBody"); if(!body)return; populateExtrasMonthFilter();
+  const month=document.getElementById("extrasMonthFilter")?.value||"all",type=document.getElementById("extrasTypeFilter")?.value||"all";
+  const all=(DATA.extrasTransactions||[]).slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.createdAt||"").localeCompare(b.createdAt||""));
+  let running=0; const withBalance=all.map(t=>{running=Math.round((running+Number(t.amount||0))*100)/100; return {...t,running};});
+  const rows=withBalance.filter(t=>(month==="all"||monthKey(t.date)===month)&&(type==="all"||(type==="in"&&t.amount>0)||(type==="out"&&t.amount<0))).reverse();
+  const periodRows=withBalance.filter(t=>month==="all"||monthKey(t.date)===month),moneyIn=periodRows.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0),moneyOut=Math.abs(periodRows.filter(t=>t.amount<0).reduce((s,t)=>s+t.amount,0)),net=moneyIn-moneyOut;
+  document.getElementById("extrasLedgerBalance").textContent=fmt(extrasBalance()); document.getElementById("extrasLedgerIn").textContent=fmt(moneyIn); document.getElementById("extrasLedgerOut").textContent=fmt(moneyOut); document.getElementById("extrasLedgerNet").textContent=(net<0?"-":"")+fmt(Math.abs(net));
+  body.innerHTML=""; document.getElementById("extrasLedgerEmpty").style.display=rows.length?"none":"block";
+  rows.forEach(t=>{ const tr=document.createElement("tr"),incoming=t.amount>0; tr.innerHTML=`<td>${escapeHtml(t.date||"")}</td><td><span class="badge ${incoming?'yes':'no'}">${incoming?'Deposit':'Withdrawal'}</span></td><td>${escapeHtml(t.source||"Extras")}</td><td>${escapeHtml(t.note||"—")}</td><td class="money-in">${incoming?fmt(t.amount):"—"}</td><td class="money-out">${!incoming?fmt(Math.abs(t.amount)):"—"}</td><td><strong>${fmt(t.running)}</strong></td>`; body.appendChild(tr); });
+}
+function renderGoalSimulator(){
+  const body=document.getElementById("goalSimulatorBody"),summary=document.getElementById("goalSimulatorSummary"); if(!body||!summary)return;
+  const amount=Math.max(0,parseFloat(document.getElementById("goalSimulatorAmount").value)||0); const total=allocationTotalFromDom(); body.innerHTML="";
+  let allocated=0,extras=0;
+  DATA.goals.forEach(g=>{
+    const completed=Number(g.target||0)>0&&Number(g.current||0)>=Number(g.target||0);
+    let pct=g.paused?0:(completed&&(DATA.settings.completedGoalBehavior||"extras")!=="extras"?0:(g.tempPercent!==null&&Number(g.tempPaychecksLeft)>0?Number(g.tempPercent):(document.getElementById("goalAllocationSlider-"+g.id)?Number(document.getElementById("goalAllocationSlider-"+g.id).value):Number(g.autoPercent||0))));
+    const raw=amount*clampNum(pct,0,100)/100,receive=Math.min(raw,Math.max(0,Number(g.target||0)-Number(g.current||0))),overflow=Math.max(0,raw-receive); allocated+=receive; extras+=overflow;
+    const tr=document.createElement("tr"); tr.innerHTML=`<td>${escapeHtml(g.name)}</td><td>${completed?"Completed":g.paused?'Paused':(g.tempPercent!==null&&Number(g.tempPaychecksLeft)>0?'Temporary':'Normal')}</td><td>${clampNum(pct,0,100).toFixed(0)}%</td><td>${fmt(receive)}</td><td>${fmt(overflow)}</td>`; body.appendChild(tr);
+  });
+  allocated=Math.round(allocated*100)/100; extras=Math.round(extras*100)/100; const left=Math.max(0,amount-allocated-extras);
+  summary.innerHTML=`<span class="badge ${total<=100?'yes':'no'}">${total.toFixed(0)}% effective</span><span><strong>${fmt(allocated)}</strong> to goals</span><span><strong>${fmt(extras)}</strong> to Extras</span><span><strong>${fmt(left)}</strong> remaining</span>${total>100?'<span style="color:var(--negative);font-weight:700;">Unbalanced — real auto-save would pause</span>':''}`;
+}
+let fundsTargetId=null;
+function openAddFunds(id){ fundsTargetId=id; const g=DATA.goals.find(g=>g.id===id); document.getElementById("fundsGoalId").value=id; document.getElementById("fundsModalTitle").textContent=g?`Adjust ${g.name}`:"Adjust goal"; document.getElementById("fundsDate").value=todayStr(); document.getElementById("fundsAction").value="add"; document.getElementById("fundsAmount").value=""; document.getElementById("fundsNote").value=""; openModal("fundsModalOverlay"); }
+function saveGoalAdjustment(){
+  const id=document.getElementById("fundsGoalId").value||fundsTargetId,g=DATA.goals.find(g=>g.id===id); if(!g){showToast("That goal could not be found.");return;}
+  const date=document.getElementById("fundsDate").value||todayStr(),action=document.getElementById("fundsAction").value,amount=parseFloat(document.getElementById("fundsAmount").value),note=document.getElementById("fundsNote").value.trim();
+  if(isNaN(amount)||amount<0){showToast("Enter a valid amount.");return;}
+  const before=Number(g.current||0),target=Number(g.target||0); let requested=before;
+  if(action==="add")requested=before+amount; if(action==="remove")requested=before-amount; if(action==="set")requested=amount;
+  if(requested<0){showToast("This adjustment would make the goal balance negative.");return;}
+  const overflow=Math.max(0,Math.round((requested-target)*100)/100),after=Math.min(requested,target),delta=Math.round((after-before)*100)/100;
+  if(Math.abs(delta)<.01 && overflow<.01){showToast("No change to save.");return;}
+  g.current=Math.round(after*100)/100;g.updatedAt=date; clearGoalCompletionIfNeeded(g); const justCompleted=markGoalCompleted(g,date);
+  let adjustmentId="";
+  if(Math.abs(delta)>=.01){ adjustmentId=uid(); DATA.goalAdjustments.push({id:adjustmentId,goalId:id,date,amount:delta,note:note||(action==="add"?"Manual deposit":action==="remove"?"Manual withdrawal":"Saved total adjusted"),kind:action}); }
+  if(overflow>0) creditExtras(overflow,{date,source:`Goal overflow • ${g.name}`,note:note||`Manual goal adjustment exceeded the target`,linkType:"goalAdjustment",linkId:adjustmentId||id});
+  saveData();closeModal("fundsModalOverlay");renderGoals();renderDashboard();renderBudget();
+  if(justCompleted&&completionUsesToast()) showToast(`${g.name} completed. ${overflow>0?fmt(overflow)+" moved to Extras.":""}`.trim());
+  else if(overflow>0) showToast(`Goal capped at ${fmt(target)}. ${fmt(overflow)} moved to Extras.`); else showToast("Goal adjusted.");
+}
+
+/* ================= Budget: categories + expenses ================= */
+function openCategoryModal(existing){
+document.getElementById("categoryModalTitle").textContent = existing ? "Edit category" : "Add category";
+document.getElementById("categoryId").value = existing ? existing.id : "";
+document.getElementById("categoryName").value = existing ? existing.name : "";
+document.getElementById("categoryBudget").value = existing ? existing.monthlyBudget : "";
+openModal("categoryModalOverlay");
+}
+function saveCategory(){
+const id = document.getElementById("categoryId").value;
+const name = document.getElementById("categoryName").value.trim();
+const monthlyBudget = parseFloat(document.getElementById("categoryBudget").value) || 0;
+if(!name){ showToast("Enter a category name."); return; }
+if(id){ const c = DATA.categories.find(c=>c.id===id); Object.assign(c, {name, monthlyBudget}); }
+else DATA.categories.push({id: uid(), name, monthlyBudget});
+saveData(); closeModal("categoryModalOverlay"); renderBudget();
+showToast("Category saved.");
+}
+function deleteCategory(id){
+if(!confirm("Delete this category? Expenses logged under it will keep their category name but it won't budget-track anymore.")) return;
+DATA.categories = DATA.categories.filter(c=>c.id!==id);
+saveData(); renderBudget();
+showToast("Category deleted.");
+}
+function openExpenseModal(existing){
+const sel = document.getElementById("expenseCategory");
+sel.innerHTML = DATA.categories.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("") || `<option value="General">General</option>`;
+document.getElementById("expenseModalTitle").textContent = existing ? "Edit expense" : "Add expense";
+document.getElementById("expenseId").value = existing ? existing.id : "";
+document.getElementById("expenseDate").value = existing ? existing.date : todayStr();
+if(existing) sel.value = existing.category;
+document.getElementById("expenseFor").value = existing ? (existing.description||existing.merchant||"") : "";
+document.getElementById("expenseAmount").value = existing ? existing.amount : "";
+document.getElementById("expenseFundingSource").value = existing ? (existing.fundingSource||"Monthly budget") : "Monthly budget";
+document.getElementById("expenseBudgetUse").value = existing && existing.countTowardBudget===false ? "no" : "yes";
+document.getElementById("expenseNote").value = existing ? (existing.note||"") : "";
+openModal("expenseModalOverlay");
+}
+function saveExpense(){
+const id = document.getElementById("expenseId").value;
+const date = document.getElementById("expenseDate").value;
+const category = document.getElementById("expenseCategory").value || "General";
+const amount = parseFloat(document.getElementById("expenseAmount").value);
+const description = document.getElementById("expenseFor").value.trim();
+const fundingSource = document.getElementById("expenseFundingSource").value || "Other";
+const countTowardBudget = document.getElementById("expenseBudgetUse").value !== "no";
+const note = document.getElementById("expenseNote").value.trim();
+if(!date || isNaN(amount) || amount <= 0){ showToast("Enter a valid date and amount."); return; }
+if(!description){ showToast("Enter what the expense was for."); return; }
+const previous=id?DATA.expenses.find(e=>e.id===id):null;
+const expenseId=id||uid();
+const availableExtras=extrasBalance()+(previous&&previous.fundingSource==="Extras"?Number(previous.amount||0):0);
+if(fundingSource==="Extras" && amount>availableExtras+0.001){ showToast(`Extras only has ${fmt(availableExtras)} available.`); return; }
+if(previous&&previous.fundingSource==="Extras"){ const removed=removeExtrasTransactionsByLink("expense",expenseId); if(!removed) creditExtras(previous.amount,{date,source:`Edited legacy expense • ${previous.description||previous.category||"Expense"}`,note:"Restored the previous Extras withdrawal before applying the edit",linkType:"expenseEdit",linkId:expenseId}); }
+if(fundingSource==="Extras" && !debitExtras(amount,{date,source:`Expense • ${description}`,note:[category,note].filter(Boolean).join(" · "),linkType:"expense",linkId:expenseId})){ showToast("Not enough money in Extras."); return; }
+if(id){ const e = DATA.expenses.find(e=>e.id===id); if(e) Object.assign(e, {date, category, amount, description, fundingSource, countTowardBudget, note}); }
+else DATA.expenses.push({id: expenseId, date, category, amount, description, fundingSource, countTowardBudget, note});
+saveData(); closeModal("expenseModalOverlay"); renderBudget(); renderDashboard(); renderGoals();
+showToast(fundingSource==="Extras"?`Expense saved. ${fmt(amount)} used from Extras.`:"Expense saved.");
+}
+function deleteExpense(id){
+const e=DATA.expenses.find(e=>e.id===id);
+if(!e || !confirm("Delete this expense?")) return;
+if(e.fundingSource==="Extras"){ const removed=removeExtrasTransactionsByLink("expense",id); if(!removed) creditExtras(e.amount,{date:todayStr(),source:`Deleted legacy expense • ${e.description||e.category||"Expense"}`,note:"Restored an Extras withdrawal created before transaction history was available",linkType:"expenseDelete",linkId:id}); }
+DATA.expenses = DATA.expenses.filter(e=>e.id!==id);
+saveData(); renderBudget(); renderDashboard(); renderGoals();
+showToast("Expense deleted.");
+}
+
+function populateBudgetMonthFilter(){
+const sel = document.getElementById("budgetMonthFilter");
+const months = Array.from(new Set(DATA.expenses.map(e=>monthKey(e.date)).concat([todayMonthKey()]))).sort().reverse();
+const prev = sel.value;
+sel.innerHTML = months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join("");
+sel.value = months.includes(prev) ? prev : todayMonthKey();
+}
+function monthLabel(m){ return new Date(m+"-02").toLocaleDateString(undefined,{month:"long", year:"numeric"}); }
+document.getElementById("budgetMonthFilter") && document.getElementById("budgetMonthFilter").addEventListener("change", renderBudget);
+
+function renderBudget(){
+populateBudgetMonthFilter();
+const extrasBudgetEl=document.getElementById("extrasBudgetBalance"); if(extrasBudgetEl) extrasBudgetEl.textContent=fmt(extrasBalance());
+const m = document.getElementById("budgetMonthFilter").value;
+const list = document.getElementById("categoryList");
+document.getElementById("categoryEmpty").style.display = DATA.categories.length ? "none" : "block";
+list.innerHTML = "";
+DATA.categories.forEach(c=>{
+const spent = DATA.expenses.filter(e=>e.category===c.name && monthKey(e.date)===m && e.countTowardBudget!==false).reduce((s,e)=>s+e.amount,0);
+const pct = c.monthlyBudget ? Math.min(100, spent/c.monthlyBudget*100) : 0;
+const over = c.monthlyBudget && spent > c.monthlyBudget;
+const cls = over ? "over" : (pct>80 ? "warn" : "");
+const row = document.createElement("div");
+row.className = "goal-card";
+row.innerHTML = `
+<div class="goal-top">
+<div><div class="goal-name">${c.name}</div><div class="goal-meta">Budget ${fmt(c.monthlyBudget)} / month</div></div>
+<div style="font-weight:700; color:${over?'var(--negative)':'inherit'};">${fmt(spent)}</div>
+</div>
+<div class="progress-track"><div class="progress-fill ${cls}" style="width:${Math.min(100,pct)}%;"></div></div>
+<div class="goal-numbers"><span>${pct.toFixed(0)}% of budget used</span><span>${fmt(Math.max(0,c.monthlyBudget-spent))} remaining</span></div>
+<div class="goal-actions">
+<button class="btn secondary small" onclick='openCategoryModal(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Edit</button>
+<button class="btn danger small" onclick="deleteCategory('${c.id}')">Delete</button>
+</div>`;
+list.appendChild(row);
+});
+
+const tbody = document.querySelector("#expenseTable tbody");
+tbody.innerHTML = "";
+const monthExpenses = DATA.expenses.filter(e=>monthKey(e.date)===m).sort((a,b)=> new Date(b.date)-new Date(a.date));
+document.getElementById("expenseEmpty").style.display = monthExpenses.length ? "none" : "block";
+monthExpenses.forEach(e=>{
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${e.date}</td><td>${escapeHtml(e.description||"—")}</td><td>${escapeHtml(e.category)}</td><td>${fmt(e.amount)}</td><td>${escapeHtml(e.fundingSource||"—")}</td><td><span class="badge ${e.countTowardBudget===false?'no':'yes'}">${e.countTowardBudget===false?'No':'Yes'}</span></td><td>${escapeHtml(e.note||"—")}</td>
+<td class="row-actions">
+<button class="link-btn edit" onclick='openExpenseModal(${safeInlineJson(e)})'>Edit</button>
+<button class="link-btn" onclick="deleteExpense('${e.id}')">Delete</button>
+</td>`;
+tbody.appendChild(tr);
+});
+}
+
+/* ================= Master transaction register ================= */
+function masterTransactionRows(){
+  const rows=[];
+  DATA.paychecks.forEach(p=>{
+    const gross=Number(p.grossAmount||p.gross||0),hours=Number(p.regularHours||0)+Number(p.overtimeHours||0),net=Number(p.amount||0);
+    rows.push({id:`income:${p.id}`,date:p.date||"",typeKey:"income",type:"Income",description:p.source||"Paycheck",category:"Payroll",amount:net,movement:"external-in",spendableImpact:net,order:10,details:[gross?`Gross ${fmt(gross)}`:"",hours?`${hours.toFixed(1)} hours`:""].filter(Boolean).join(" · ")});
+    (p.allocations||[]).forEach((a,i)=>{
+      const g=DATA.goals.find(g=>g.id===a.goalId),amt=Math.abs(Number(a.amount||0));
+      rows.push({id:`goal:auto:${p.id}:${i}`,date:p.date||"",typeKey:"goal",type:"Goal transfer",description:`${p.source||"Paycheck"} → ${g?g.name:"Deleted goal"}`,category:g?g.name:"Goal",amount:amt,movement:"internal",spendableImpact:-amt,order:20,details:"Automatic paycheck allocation"});
+    });
+  });
+  DATA.expenses.forEach(e=>{const amt=Math.abs(Number(e.amount||0)); rows.push({id:`expense:${e.id}`,date:e.date||"",typeKey:"expense",type:"Expense",description:e.description||e.note||e.category||"Expense",category:e.category||"General",amount:-amt,movement:"external-out",spendableImpact:-amt,order:40,details:[e.fundingSource?`Paid from ${e.fundingSource}`:"",e.countTowardBudget===false?"Not counted against budget":"",e.note||""].filter(Boolean).join(" · ")});});
+  DATA.goalAdjustments.forEach(a=>{
+    const g=DATA.goals.find(g=>g.id===a.goalId),amt=Number(a.amount||0),actualMove=["add","remove"].includes(a.kind);
+    rows.push({id:`goal:manual:${a.id}`,date:a.date||"",typeKey:"goal",type:amt>=0?"Goal deposit":"Goal withdrawal",description:g?g.name:"Deleted goal",category:"Goal adjustment",amount:amt,movement:"internal",spendableImpact:actualMove?-amt:0,order:25,details:a.note||"Manual goal adjustment"});
+  });
+  (DATA.extrasTransactions||[]).forEach(t=>{
+    const amt=Number(t.amount||0);
+    rows.push({id:`extras:${t.id}`,date:t.date||"",typeKey:"extras",type:amt>=0?"Extras deposit":"Extras withdrawal",description:t.source||"Extras",category:"Extras",amount:amt,movement:"internal",spendableImpact:0,order:30,details:t.note||""});
+  });
+  (DATA.billPayments||[]).forEach(bp=>{
+    const bill=DATA.bills.find(b=>b.id===bp.billId); if(!bill)return;
+    let date=bp.date||"";
+    if(!date&&bp.monthKey){const last=new Date(Number(bp.monthKey.slice(0,4)),Number(bp.monthKey.slice(5,7)),0).getDate();date=`${bp.monthKey}-${String(Math.min(Math.max(1,Number(bill.dueDay||1)),last)).padStart(2,"0")}`;}
+    const amt=Math.abs(Number(bill.amount||0));
+    rows.push({id:`bill:${bp.id}`,date,typeKey:"bill",type:"Bill payment",description:bill.name||"Bill",category:"Recurring bill",amount:-amt,movement:"external-out",spendableImpact:-amt,order:40,details:[bill.autopay?"Autopay":"Marked paid",bp.monthKey?monthLabel(bp.monthKey):""].filter(Boolean).join(" · ")});
+  });
+  return rows.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.order||0)-(a.order||0)||b.id.localeCompare(a.id));
+}
+function spendableBalanceMap(){
+  const rows=masterTransactionRows().slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.order||0)-(b.order||0)||a.id.localeCompare(b.id));
+  let running=Math.max(0,Number(DATA.settings.openingSpendableBalance||0)); const map={};
+  rows.forEach(r=>{running=Math.round((running+Number(r.spendableImpact||0))*100)/100;map[r.id]=running;});
+  return map;
+}
+function currentSpendableBalance(){
+  return Math.round((Math.max(0,Number(DATA.settings.openingSpendableBalance||0))+masterTransactionRows().reduce((s,r)=>s+Number(r.spendableImpact||0),0))*100)/100;
+}
+function populateTransactionMonthFilter(rows){
+  const sel=document.getElementById("transactionMonthFilter"); if(!sel)return;
+  const months=Array.from(new Set(rows.map(r=>monthKey(r.date)).filter(Boolean))).sort().reverse(),prev=sel.value;
+  sel.innerHTML=`<option value="all">All time</option>`+months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join("");
+  sel.value=(prev==="all"||months.includes(prev))?prev:"all";
+}
+function filteredMasterTransactions(){
+  const all=masterTransactionRows(); populateTransactionMonthFilter(all);
+  const month=document.getElementById("transactionMonthFilter")?.value||"all",type=document.getElementById("transactionTypeFilter")?.value||"all",movement=document.getElementById("transactionMovementFilter")?.value||"all",q=(document.getElementById("transactionSearch")?.value||"").trim().toLowerCase();
+  return all.filter(r=>(month==="all"||monthKey(r.date)===month)&&(type==="all"||r.typeKey===type)&&(movement==="all"||(movement==="internal"?r.movement==="internal":r.movement!=="internal"))&&(!q||[r.date,r.type,r.description,r.category,r.details].join(" ").toLowerCase().includes(q)));
+}
+function renderTransactions(){
+  const body=document.getElementById("transactionTableBody"); if(!body)return;
+  const rows=filteredMasterTransactions(),balanceMap=spendableBalanceMap(),externalIn=rows.filter(r=>r.movement==="external-in").reduce((s,r)=>s+Math.max(0,r.amount),0),externalOut=rows.filter(r=>r.movement==="external-out").reduce((s,r)=>s+Math.abs(Math.min(0,r.amount)),0),internalCount=rows.filter(r=>r.movement==="internal").length;
+  document.getElementById("transactionStats").innerHTML=`<div class="card"><div class="stat-label">Cash in</div><div class="stat-value">${fmt(externalIn)}</div><div class="stat-delta up">External income shown</div></div><div class="card"><div class="stat-label">Cash out</div><div class="stat-value">${fmt(externalOut)}</div><div class="stat-delta down">Expenses + paid bills</div></div><div class="card"><div class="stat-label">Net cash flow</div><div class="stat-value">${fmt(externalIn-externalOut)}</div><div class="stat-delta ${externalIn-externalOut>=0?'up':'down'}">For the current filters</div></div><div class="card"><div class="stat-label">Internal entries</div><div class="stat-value">${internalCount}</div><div class="stat-delta flat">Goals + Extras, not double-counted</div></div>`;
+  body.innerHTML=""; document.getElementById("transactionEmpty").style.display=rows.length?"none":"block";
+  rows.forEach(r=>{
+    const tr=document.createElement("tr"),isIn=r.amount>=0,amountClass=r.movement==="internal"?"internal":(isIn?"in":"out"),movementLabel=r.movement==="internal"?"Internal transfer":(r.movement==="external-in"?"External in":"External out");
+    const balance=Number(balanceMap[r.id]??currentSpendableBalance());
+    tr.innerHTML=`<td>${escapeHtml(r.date||"—")}</td><td>${escapeHtml(r.type)}</td><td><strong>${escapeHtml(r.description||"—")}</strong></td><td>${escapeHtml(r.category||"—")}</td><td class="transaction-amount ${amountClass}">${isIn?"+":"−"}${fmt(Math.abs(r.amount))}</td><td class="transaction-balance ${balance<0?'negative':''}">${fmt(balance)}</td><td><span class="movement-pill ${r.movement}">${movementLabel}</span></td><td>${escapeHtml(r.details||"—")}</td>`; body.appendChild(tr);
+  });
+  document.getElementById("transactionResultNote").textContent=`${rows.length} entr${rows.length===1?'y':'ies'} shown. Internal savings movements stay visible but do not change the cash-flow totals.`;
+}
+function exportMasterTransactionsCSV(){
+  const rows=filteredMasterTransactions(),balanceMap=spendableBalanceMap(),header=["Date","Type","Description","Category or Source","Amount","Spendable Balance","Movement","Details"];
+  const csv=[header,...rows.map(r=>[r.date,r.type,r.description,r.category,r.amount,balanceMap[r.id]??"",r.movement==="internal"?"Internal transfer":r.movement==="external-in"?"External in":"External out",r.details])].map(r=>r.map(csvEscape).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"}),url=URL.createObjectURL(blob),a=document.createElement("a"); a.href=url;a.download="ledger-master-transactions-"+todayStr()+".csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);showToast("Transaction view exported.");
+}
+
+/* ================= Bills ================= */
+function openBillModal(existing){
+document.getElementById("billModalTitle").textContent = existing ? "Edit bill" : "Add bill";
+document.getElementById("billId").value = existing ? existing.id : "";
+document.getElementById("billName").value = existing ? existing.name : "";
+document.getElementById("billAmount").value = existing ? existing.amount : "";
+document.getElementById("billDueDay").value = existing ? existing.dueDay : "";
+document.getElementById("billAutopay").checked = existing ? !!existing.autopay : false;
+openModal("billModalOverlay");
+}
+function saveBill(){
+const id = document.getElementById("billId").value;
+const name = document.getElementById("billName").value.trim();
+const amount = parseFloat(document.getElementById("billAmount").value);
+const dueDay = parseInt(document.getElementById("billDueDay").value);
+const autopay = document.getElementById("billAutopay").checked;
+if(!name || isNaN(amount) || amount<0 || !dueDay || dueDay<1 || dueDay>31){ showToast("Enter a valid name, amount, and due day (1–31)."); return; }
+if(id){ const b = DATA.bills.find(b=>b.id===id); Object.assign(b, {name, amount, dueDay, autopay}); }
+else DATA.bills.push({id: uid(), name, amount, dueDay, autopay});
+saveData(); closeModal("billModalOverlay"); renderBills(); renderDashboard();
+showToast("Bill saved.");
+}
+function deleteBill(id){
+if(!confirm("Delete this bill?")) return;
+DATA.bills = DATA.bills.filter(b=>b.id!==id);
+DATA.billPayments = DATA.billPayments.filter(p=>p.billId!==id);
+saveData(); renderBills(); renderDashboard();
+showToast("Bill deleted.");
+}
+function isBillPaid(billId, mKey){ return DATA.billPayments.some(p=>p.billId===billId && p.monthKey===mKey); }
+function toggleBillPaid(billId){
+const mKey = todayMonthKey();
+if(isBillPaid(billId, mKey)){
+DATA.billPayments = DATA.billPayments.filter(p=>!(p.billId===billId && p.monthKey===mKey));
+} else {
+DATA.billPayments.push({id: uid(), billId, monthKey: mKey, date: todayStr()});
+}
+saveData(); renderBills(); renderDashboard();
+}
+function billStatus(bill){
+const today = new Date();
+const day = today.getDate();
+const mKey = todayMonthKey();
+const paid = isBillPaid(bill.id, mKey);
+if(paid) return {label:"Paid", cls:"paid"};
+const diff = bill.dueDay - day;
+if(diff < 0) return {label:"Overdue", cls:"overdue"};
+if(diff <= 5) return {label:"Due in "+diff+"d", cls:"soon"};
+return {label:"Unpaid", cls:"unpaid"};
+}
+function renderBills(){
+const tbody = document.querySelector("#billsTable tbody");
+tbody.innerHTML = "";
+const sorted = [...DATA.bills].sort((a,b)=>a.dueDay-b.dueDay);
+document.getElementById("billsEmpty").style.display = sorted.length ? "none" : "block";
+sorted.forEach(b=>{
+const st = billStatus(b);
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${b.name}${b.autopay ? ' <span class="mini-note">(autopay)</span>':''}</td><td>${fmt(b.amount)}</td><td>Day ${b.dueDay}</td>
+<td><span class="pill ${st.cls}">${st.label}</span></td>
+<td class="row-actions">
+<button class="link-btn edit" onclick="toggleBillPaid('${b.id}')">${isBillPaid(b.id, todayMonthKey()) ? "Mark unpaid" : "Mark paid"}</button>
+<button class="link-btn edit" onclick='openBillModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>Edit</button>
+<button class="link-btn" onclick="deleteBill('${b.id}')">Delete</button>
+</td>`;
+tbody.appendChild(tr);
+});
+}
+function renderBillBanner(){
+const container = document.getElementById("billBanner");
+const dueSoon = DATA.bills.filter(b=>{
+const st = billStatus(b);
+return st.cls==="soon" || st.cls==="overdue";
+});
+if(!dueSoon.length){ container.innerHTML=""; return; }
+const overdue = dueSoon.some(b=>billStatus(b).cls==="overdue");
+const names = dueSoon.map(b=>`${b.name} (${billStatus(b).label.toLowerCase()})`).join(", ");
+container.innerHTML = `<div class="banner ${overdue?'overdue':''}"><div><strong>${overdue?'Overdue bill':'Upcoming bill'}${dueSoon.length>1?'s':''}:</strong> ${names}</div><button class="btn small secondary" onclick="document.querySelector('[data-view=bills]').click()">Go to Bills</button></div>`;
+}
+
+/* ================= Debts ================= */
+function openDebtModal(existing){
+document.getElementById("debtModalTitle").textContent = existing ? "Edit debt" : "Add debt";
+document.getElementById("debtId").value = existing ? existing.id : "";
+document.getElementById("debtName").value = existing ? existing.name : "";
+document.getElementById("debtBalance").value = existing ? existing.balance : "";
+document.getElementById("debtApr").value = existing ? existing.apr : "";
+document.getElementById("debtMinPayment").value = existing ? existing.minPayment : "";
+openModal("debtModalOverlay");
+}
+function saveDebt(){
+const id = document.getElementById("debtId").value;
+const name = document.getElementById("debtName").value.trim();
+const balance = parseFloat(document.getElementById("debtBalance").value);
+const apr = parseFloat(document.getElementById("debtApr").value) || 0;
+const minPayment = parseFloat(document.getElementById("debtMinPayment").value) || 0;
+if(!name || isNaN(balance) || balance<0){ showToast("Enter a valid debt name and balance."); return; }
+if(id){ const d = DATA.debts.find(d=>d.id===id); Object.assign(d, {name, balance, apr, minPayment}); }
+else DATA.debts.push({id: uid(), name, balance, apr, minPayment});
+saveData(); closeModal("debtModalOverlay"); renderDebts();
+showToast("Debt saved.");
+}
+function deleteDebt(id){
+if(!confirm("Delete this debt?")) return;
+DATA.debts = DATA.debts.filter(d=>d.id!==id);
+saveData(); renderDebts();
+showToast("Debt deleted.");
+}
+function renderDebts(){
+const tbody = document.querySelector("#debtsTable tbody");
+tbody.innerHTML = "";
+document.getElementById("debtsEmpty").style.display = DATA.debts.length ? "none" : "block";
+document.getElementById("debtPlanCard").style.display = DATA.debts.length ? "block" : "none";
+DATA.debts.forEach(d=>{
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${d.name}</td><td>${fmt(d.balance)}</td><td>${d.apr}%</td><td>${fmt(d.minPayment)}</td>
+<td class="row-actions">
+<button class="link-btn edit" onclick='openDebtModal(${JSON.stringify(d).replace(/'/g,"&#39;")})'>Edit</button>
+<button class="link-btn" onclick="deleteDebt('${d.id}')">Delete</button>
+</td>`;
+tbody.appendChild(tr);
+});
+if(DATA.debts.length) renderDebtPlan();
+}
+function simulateDebtPayoff(debts, extra, strategy){
+let working = debts.map(d=>({...d, remaining: d.balance}));
+working.sort((a,b)=> strategy==="avalanche" ? b.apr-a.apr : a.remaining-b.remaining);
+const payoffMonth = {};
+let month = 0, totalInterest = 0;
+const MAX_MONTHS = 600;
+while(working.some(d=>d.remaining>0.01) && month < MAX_MONTHS){
+month++;
+let extraLeft = extra;
+working.forEach(d=>{
+if(d.remaining<=0) return;
+const interest = d.remaining * (d.apr/100/12);
+totalInterest += interest;
+d.remaining += interest;
+const pay = Math.min(d.remaining, d.minPayment || 0);
+d.remaining -= pay;
+});
+for(const d of working){
+if(d.remaining>0.01 && extraLeft>0){
+const pay = Math.min(d.remaining, extraLeft);
+d.remaining -= pay;
+extraLeft -= pay;
+}
+}
+working.forEach(d=>{ if(d.remaining<=0.01 && payoffMonth[d.id]===undefined) payoffMonth[d.id]=month; });
+}
+return {order: working.map(d=>d.id), payoffMonth, totalMonths: month, totalInterest};
+}
+function renderDebtPlan(){
+const strategy = document.getElementById("strategySelect").value;
+const extra = parseFloat(document.getElementById("extraPayment").value) || 0;
+const result = simulateDebtPayoff(DATA.debts, extra, strategy);
+
+const stats = document.getElementById("debtPlanStats");
+const totalBalance = DATA.debts.reduce((s,d)=>s+d.balance,0);
+const years = Math.floor(result.totalMonths/12), months = result.totalMonths%12;
+const debtFreeDate = new Date(); debtFreeDate.setMonth(debtFreeDate.getMonth()+result.totalMonths);
+stats.innerHTML = `
+<div class="card"><div class="stat-label">Total debt</div><div class="stat-value">${fmt(totalBalance)}</div></div>
+<div class="card"><div class="stat-label">Debt-free in</div><div class="stat-value">${years>0?years+"y ":""}${months}mo</div></div>
+<div class="card"><div class="stat-label">Estimated payoff date</div><div class="stat-value">${debtFreeDate.toLocaleDateString(undefined,{month:"short",year:"numeric"})}</div></div>
+<div class="card"><div class="stat-label">Est. total interest</div><div class="stat-value">${fmt(result.totalInterest)}</div></div>
+`;
+const tbody = document.querySelector("#debtPlanTable tbody");
+tbody.innerHTML = "";
+result.order.forEach((id, idx)=>{
+const d = DATA.debts.find(d=>d.id===id);
+if(!d) return;
+const m = result.payoffMonth[id] || result.totalMonths;
+const date = new Date(); date.setMonth(date.getMonth()+m);
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>#${idx+1}</td><td>${d.name}</td><td>${m} mo</td><td>${date.toLocaleDateString(undefined,{month:"short",year:"numeric"})}</td>`;
+tbody.appendChild(tr);
+});
+}
+
+/* ================= Net worth ================= */
+function openNetWorthModal(existing){
+document.getElementById("netWorthModalTitle").textContent = existing ? "Edit snapshot" : "Add snapshot";
+document.getElementById("netWorthId").value = existing ? existing.id : "";
+document.getElementById("netWorthDate").value = existing ? existing.date : todayStr();
+document.getElementById("netWorthAssets").value = existing ? existing.assets : "";
+document.getElementById("netWorthLiabilities").value = existing ? existing.liabilities : "";
+openModal("netWorthModalOverlay");
+}
+function saveNetWorth(){
+const id = document.getElementById("netWorthId").value;
+const date = document.getElementById("netWorthDate").value;
+const assets = parseFloat(document.getElementById("netWorthAssets").value) || 0;
+const liabilities = parseFloat(document.getElementById("netWorthLiabilities").value) || 0;
+if(!date){ showToast("Pick a date."); return; }
+if(id){ const s = DATA.netWorth.find(s=>s.id===id); Object.assign(s, {date, assets, liabilities}); }
+else DATA.netWorth.push({id: uid(), date, assets, liabilities});
+DATA.netWorth.sort((a,b)=> new Date(a.date)-new Date(b.date));
+saveData(); closeModal("netWorthModalOverlay"); renderNetWorth();
+showToast("Snapshot saved.");
+}
+function deleteNetWorth(id){
+if(!confirm("Delete this snapshot?")) return;
+DATA.netWorth = DATA.netWorth.filter(s=>s.id!==id);
+saveData(); renderNetWorth();
+showToast("Snapshot deleted.");
+}
+let netWorthChartInstance;
+function renderNetWorth(){
+if(typeof Chart === "undefined"){ return; }
+const tbody = document.querySelector("#netWorthTable tbody");
+tbody.innerHTML = "";
+document.getElementById("netWorthTableEmpty").style.display = DATA.netWorth.length ? "none" : "block";
+DATA.netWorth.forEach(s=>{
+const net = s.assets - s.liabilities;
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${s.date}</td><td>${fmt(s.assets)}</td><td>${fmt(s.liabilities)}</td><td style="font-weight:650;">${fmt(net)}</td>
+<td class="row-actions">
+<button class="link-btn edit" onclick='openNetWorthModal(${JSON.stringify(s).replace(/'/g,"&#39;")})'>Edit</button>
+<button class="link-btn" onclick="deleteNetWorth('${s.id}')">Delete</button>
+</td>`;
+tbody.appendChild(tr);
+});
+const ctx = document.getElementById("netWorthChart");
+document.getElementById("netWorthEmptyNote").style.display = DATA.netWorth.length ? "none" : "block";
+if(netWorthChartInstance) netWorthChartInstance.destroy();
+if(!DATA.netWorth.length) return;
+const c = chartColors();
+netWorthChartInstance = new Chart(ctx, {
+type:"line",
+data:{
+labels: DATA.netWorth.map(s=>s.date),
+datasets:[{label:"Net worth", data: DATA.netWorth.map(s=>s.assets-s.liabilities), borderColor:c.accent, backgroundColor:c.accent+"22", fill:true, tension:0.3, pointRadius:3}]
+},
+options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+scales:{x:{ticks:{color:c.muted}, grid:{color:c.border}}, y:{ticks:{color:c.muted}, grid:{color:c.border}}}}
+});
+}
+
+/* ================= Payroll estimate ================= */
+function parseDateOnly(dateStr){
+const parts = String(dateStr||"").split("-").map(Number);
+if(parts.length!==3 || parts.some(n=>!Number.isFinite(n))) return null;
+return new Date(parts[0], parts[1]-1, parts[2]);
+}
+function payrollEstimate(profileId){
+  let profile=profileId?profileById(profileId):null;
+  const newest=[...DATA.paychecks].filter(p=>Number(p.amount)>=0).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  if(!profile && newest.length && newest[0].profileId) profile=profileById(newest[0].profileId);
+  if(!profile && DATA.payrollProfiles.length) profile=DATA.payrollProfiles[0];
+  if(profile){
+    const rows=paychecksForProfile(profile).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+    const hours=estimateHoursForProfile(profile);
+    const learned=learnedTaxRate(profile), taxRate=learned===null?Number(profile.taxRate||0):Number(profile.taxRate||0)*.35+learned*.65;
+    const expected=payrollCalc(profile,hours.expectedReg,hours.expectedOt,taxRate), low=payrollCalc(profile,hours.lowReg,hours.lowOt,taxRate), high=payrollCalc(profile,hours.highReg,hours.highOt,taxRate);
+    const actualAmounts=rows.map(p=>Number(p.amount||0)).filter(v=>v>=0);
+    let expectedNet=expected.net, lowNet=low.net, highNet=high.net;
+    if(actualAmounts.length>=2){
+      const histAvg=actualAmounts.reduce((a,b)=>a+b,0)/actualAmounts.length;
+      expectedNet=expectedNet*.65+histAvg*.35;
+      lowNet=Math.min(lowNet,...actualAmounts); highNet=Math.max(highNet,...actualAmounts);
+    }
+    let cadenceDays=frequencyDays(profile.payFrequency),nextDate=profile.nextPayDate||null;
+    const asc=[...rows].sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    if(!nextDate&&asc.length){ const last=parseDateOnly(asc[asc.length-1].date); if(last){ const d=new Date(last); d.setDate(d.getDate()+cadenceDays); nextDate=todaySafeDate(d); } }
+    const conf=payrollConfidence(rows.length,actualAmounts,true,hours.samples);
+    return {amount:expectedNet,low:Math.max(0,lowNet),high:Math.max(expectedNet,highNet),gross:expected.gross,tax:expected.tax,taxRate,source:profile.name,profileId:profile.id,samples:rows.length,cadenceDays,nextDate,expectedReg:hours.expectedReg,expectedOt:hours.expectedOt,confidence:conf};
+  }
+  if(!newest.length) return null;
+  const source=newest[0].source||"Unspecified",same=newest.filter(p=>(p.source||"Unspecified")===source),recent=same.slice(0,6),amounts=recent.map(p=>Number(p.amount||0));
+  const amount=amounts.reduce((a,b)=>a+b,0)/amounts.length,low=Math.min(...amounts),high=Math.max(...amounts); let cadenceDays=null,nextDate=null;
+  const asc=[...same].sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(-7),diffs=[];
+  for(let i=1;i<asc.length;i++){const a=parseDateOnly(asc[i-1].date),b=parseDateOnly(asc[i].date);if(a&&b){const d=Math.round((b-a)/86400000);if(d>=5&&d<=45)diffs.push(d);}}
+  if(diffs.length){diffs.sort((a,b)=>a-b);cadenceDays=diffs[Math.floor(diffs.length/2)];const last=parseDateOnly(same[0].date);if(last){const d=new Date(last);d.setDate(d.getDate()+cadenceDays);nextDate=todaySafeDate(d);}}
+  return {amount,low,high,source,profileId:"",samples:recent.length,cadenceDays,nextDate,confidence:payrollConfidence(recent.length,amounts,false,0)};
+}
+function todaySafeDate(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`; }
+function populatePayrollEstimateFilter(){
+  const sel=document.getElementById("payrollEstimateProfileFilter"); if(!sel)return;
+  const prev=sel.value; sel.innerHTML='<option value="">Primary / most recent</option>'+DATA.payrollProfiles.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join(""); if(DATA.payrollProfiles.some(p=>p.id===prev))sel.value=prev;else sel.value="";
+}
+function renderPayrollProfiles(){
+  const list=document.getElementById("payrollProfileList"),empty=document.getElementById("payrollProfileEmpty"); if(!list||!empty)return; list.innerHTML=""; empty.style.display=DATA.payrollProfiles.length?"none":"block";
+  DATA.payrollProfiles.forEach(p=>{ const est=payrollEstimate(p.id),div=document.createElement("div");div.className="profile-card";div.innerHTML=`<div class="profile-card-head"><div><div class="profile-card-name">${escapeHtml(p.name)}</div><div class="profile-card-meta">${fmt(p.hourlyRate)}/hr · ${Number(p.typicalHours||0).toFixed(1)} typical hrs · OT ×${Number(p.overtimeMultiplier||1.5).toFixed(1)} · ${Number(p.taxRate||0).toFixed(1)}% tax · ${frequencyLabel(p.payFrequency)}</div></div>${est?`<span class="confidence ${est.confidence.className}">${est.confidence.label}</span>`:""}</div>${est?`<div class="profile-card-meta"><strong>${fmt(est.amount)}</strong> expected take-home · range ${fmt(est.low)}–${fmt(est.high)}${est.nextDate?` · next ${est.nextDate}`:""}</div>`:""}<div class="profile-actions"><button class="btn secondary small" onclick='openPayrollProfileModal(${safeInlineJson(p)})'>Edit</button><button class="btn danger small" onclick="deletePayrollProfile('${p.id}')">Delete</button></div>`;list.appendChild(div); });
+}
+function renderPayrollEstimate(){
+  populatePayrollEstimateFilter(); const el=document.getElementById("payrollEstimateContent"); if(!el)return; const selected=document.getElementById("payrollEstimateProfileFilter")?.value||"",est=payrollEstimate(selected||undefined);
+  if(!est){el.innerHTML='<div class="empty-note">Add a payroll profile or after-tax paycheck to build an estimate.</div>';return;}
+  const next=est.nextDate||"Need a payday or more dates",cadence=est.cadenceDays?`about every ${est.cadenceDays} days`:"cadence not learned yet",range=`${fmt(est.low)} – ${fmt(est.high)}`;
+  el.innerHTML=`<div class="payroll-estimate-grid"><div class="payroll-estimate-item"><div class="k">Expected take-home</div><div class="v">${fmt(est.amount)}</div></div><div class="payroll-estimate-item"><div class="k">Likely range</div><div class="v">${range}</div></div><div class="payroll-estimate-item"><div class="k">Estimated gross</div><div class="v">${est.gross!==undefined?fmt(est.gross):"—"}</div></div><div class="payroll-estimate-item"><div class="k">Tax estimate</div><div class="v">${est.taxRate!==undefined?est.taxRate.toFixed(1)+"%":"—"}</div></div><div class="payroll-estimate-item"><div class="k">Expected hours</div><div class="v">${est.expectedReg!==undefined?`${est.expectedReg.toFixed(1)} + ${est.expectedOt.toFixed(1)} OT`:"History only"}</div></div><div class="payroll-estimate-item"><div class="k">Next pay date</div><div class="v">${next}</div></div></div><div class="payroll-estimate-note"><span class="confidence ${est.confidence.className}">${est.confidence.label} confidence · ${est.confidence.score}%</span> Estimate for ${escapeHtml(est.source)} uses ${est.samples} logged paycheck${est.samples===1?"":"s"}, expected hours, overtime and effective tax data when available (${cadence}).</div>`;
+}
+
+/* ================= Safe-to-spend + 30/60/90 forecast v8 ================= */
+function dateDiffDays(a,b){const da=parseDateOnly(a),db=parseDateOnly(b);if(!da||!db)return null;return Math.round((db-da)/86400000);}
+function nextExpectedPayday(){
+  const today=todayStr(),dates=[];
+  DATA.payrollProfiles.forEach(p=>{const e=payrollEstimate(p.id);if(e?.nextDate&&e.nextDate>=today)dates.push(e.nextDate);});
+  if(!dates.length){const e=payrollEstimate();if(e?.nextDate&&e.nextDate>=today)dates.push(e.nextDate);}
+  return dates.sort()[0]||"";
+}
+function billDueDateForMonth(bill,month){
+  const y=Number(month.slice(0,4)),m=Number(month.slice(5,7)),last=new Date(y,m,0).getDate(),day=Math.min(Math.max(1,Number(bill.dueDay||1)),last);
+  return `${month}-${String(day).padStart(2,"0")}`;
+}
+function monthsBetweenDates(startDate,endDate){
+  const a=parseDateOnly(startDate),b=parseDateOnly(endDate); if(!a||!b)return[]; const out=[]; let y=a.getFullYear(),m=a.getMonth();
+  while(y<b.getFullYear()||(y===b.getFullYear()&&m<=b.getMonth())){out.push(`${y}-${String(m+1).padStart(2,"0")}`);m++;if(m>11){m=0;y++;}if(out.length>120)break;} return out;
+}
+function unpaidBillsThrough(cutoff){
+  const today=todayStr(),rows=[]; monthsBetweenDates(today,cutoff).forEach(month=>DATA.bills.forEach(b=>{
+    if(billPaidForMonth(b.id,month))return; const due=billDueDateForMonth(b,month);
+    if(due<=cutoff && (due>=today || month===todayMonthKey())) rows.push({bill:b,date:due,amount:Math.abs(Number(b.amount||0))});
+  })); return rows;
+}
+function safeToSpendSummary(){
+  const current=currentSpendableBalance(),nextPay=nextExpectedPayday(),fallback=addDaysDate(todayStr(),30),cutoff=nextPay||fallback,bills=unpaidBillsThrough(cutoff),reserved=bills.reduce((s,x)=>s+x.amount,0),safe=Math.round((current-reserved)*100)/100;
+  return {current,nextPay,cutoff,bills,reserved,safe};
+}
+function cloneForecastGoals(){return DATA.goals.map(g=>({id:g.id,name:g.name,target:Number(g.target||0),current:Number(g.current||0),autoPercent:Number(g.autoPercent||0),paused:!!g.paused,tempPercent:g.tempPercent===null||g.tempPercent===undefined?null:Number(g.tempPercent),tempPaychecksLeft:Number(g.tempPaychecksLeft||0)}));}
+function forecastGoalPercent(g){
+  if(g.paused)return 0; const completed=g.target>0&&g.current>=g.target;
+  if(completed&&(DATA.settings.completedGoalBehavior||"extras")!=="extras")return 0;
+  if(g.tempPercent!==null&&g.tempPaychecksLeft>0)return clampNum(g.tempPercent,0,100); return clampNum(g.autoPercent,0,100);
+}
+function projectGoalReserveForPaycheck(goals,payAmount){
+  if(!DATA.settings.autoSaveEnabled)return 0; const total=goals.reduce((s,g)=>s+forecastGoalPercent(g),0); if(total>100)return 0;
+  let reserved=0;
+  goals.forEach(g=>{
+    const pct=forecastGoalPercent(g),completed=g.target>0&&g.current>=g.target;
+    if(pct>0&&!completed){const proposed=payAmount*pct/100,needed=Math.max(0,g.target-g.current),into=Math.min(needed,proposed);g.current=Math.round((g.current+into)*100)/100;reserved+=into;}
+    if(g.tempPercent!==null&&g.tempPaychecksLeft>0){g.tempPaychecksLeft=Math.max(0,g.tempPaychecksLeft-1);if(!g.tempPaychecksLeft)g.tempPercent=null;}
+  });
+  return Math.round(reserved*100)/100;
+}
+function projectedPayrollStreams(horizonDate){
+  const today=todayStr(),rows=[];
+  const addStream=(profile,est)=>{if(!est||!est.amount||!est.cadenceDays)return;let date=est.nextDate||addDaysDate(today,est.cadenceDays);let guard=0;while(date&&date<=horizonDate&&guard<100){if(date>=today)rows.push({date,kind:"pay",source:profile?.name||est.source||"Expected payroll",amount:Number(est.amount||0),cadence:est.cadenceDays});date=addDaysDate(date,est.cadenceDays);guard++;}};
+  if(DATA.payrollProfiles.length)DATA.payrollProfiles.forEach(p=>addStream(p,payrollEstimate(p.id)));else addStream(null,payrollEstimate());
+  return rows;
+}
+function cashForecast(days){
+  const today=todayStr(),end=addDaysDate(today,days),goals=cloneForecastGoals(),events=[];
+  projectedPayrollStreams(end).forEach(p=>events.push({...p,priority:10,title:`Expected paycheck · ${p.source}`}));
+  monthsBetweenDates(today,end).forEach(month=>DATA.bills.forEach(b=>{if(billPaidForMonth(b.id,month))return;let date=billDueDateForMonth(b,month);if(month===todayMonthKey()&&date<today)date=today;if(date>=today&&date<=end)events.push({date,kind:"bill",priority:30,title:b.name||"Bill",amount:-Math.abs(Number(b.amount||0))});}));
+  events.sort((a,b)=>a.date.localeCompare(b.date)||a.priority-b.priority||a.title.localeCompare(b.title));
+  let running=currentSpendableBalance(),lowest=running,income=0,bills=0,goalsReserved=0; const expanded=[];
+  events.forEach(ev=>{
+    if(ev.kind==="pay"){
+      running+=ev.amount;income+=ev.amount;expanded.push({...ev,impact:ev.amount,balance:running});
+      const reserve=projectGoalReserveForPaycheck(goals,ev.amount); if(reserve>0){running-=reserve;goalsReserved+=reserve;expanded.push({date:ev.date,kind:"goal",priority:20,title:"Projected goal transfers",amount:-reserve,impact:-reserve,balance:running});}
+    }else{running+=ev.amount;bills+=Math.abs(ev.amount);expanded.push({...ev,impact:ev.amount,balance:running});}
+    lowest=Math.min(lowest,running);
+  });
+  return {days,end,starting:currentSpendableBalance(),closing:Math.round(running*100)/100,lowest:Math.round(lowest*100)/100,income:Math.round(income*100)/100,bills:Math.round(bills*100)/100,goals:Math.round(goalsReserved*100)/100,events:expanded};
+}
+function renderCashPlanning(){
+  const safeBox=document.getElementById("safeToSpendContent"),forecastBox=document.getElementById("cashForecastContent"); if(!safeBox||!forecastBox)return;
+  const s=safeToSpendSummary(),safeClass=s.safe<0?"negative":"";
+  safeBox.innerHTML=`<div class="stat-label">Available right now</div><div class="safe-spend-value ${safeClass}">${fmt(s.safe)}</div><div class="mini-note">${s.nextPay?`After reserving bills through expected payday ${s.nextPay}.`:`No reliable next payday yet, so Ledger reserves unpaid bills for the next 30 days.`}</div><div class="safe-breakdown"><div class="safe-breakdown-row"><span>Ledger-calculated spendable balance</span><strong>${fmt(s.current)}</strong></div><div class="safe-breakdown-row"><span>Unpaid bills reserved (${s.bills.length})</span><strong>−${fmt(s.reserved)}</strong></div><div class="safe-breakdown-row"><span>Opening balance baseline</span><strong>${fmt(DATA.settings.openingSpendableBalance||0)}</strong></div></div>${s.safe<0?`<div class="allocation-summary bad" style="margin-top:12px;"><div><div class="allocation-main">Bills exceed spendable funds by ${fmt(Math.abs(s.safe))}</div><div class="allocation-detail">The safe-to-spend amount stays negative so the shortage is visible.</div></div></div>`:""}`;
+  const forecasts=[30,60,90].map(cashForecast),f90=forecasts[2],nextEvents=f90.events.slice(0,8);
+  forecastBox.innerHTML=`<div class="forecast-grid">${forecasts.map(f=>`<div class="forecast-horizon"><div class="days">${f.days} days · ${f.end}</div><div class="balance ${f.closing<0?'negative':''}">${fmt(f.closing)}</div><div class="meta">Projected spendable balance<br>Income +${fmt(f.income)} · Bills −${fmt(f.bills)} · Goals −${fmt(f.goals)}<br>Lowest point ${fmt(f.lowest)}</div></div>`).join("")}</div><div class="forecast-events"><div class="mini-note" style="margin:0 0 4px;">Next projected events</div>${nextEvents.length?nextEvents.map(ev=>`<div class="forecast-event"><div class="date">${ev.date}</div><div>${escapeHtml(ev.title)}</div><div class="amt ${ev.impact>=0?'timeline-positive':'timeline-negative'}">${ev.impact>=0?'+':'−'}${fmt(Math.abs(ev.impact))}</div><div class="bal">${fmt(ev.balance)}</div></div>`).join(""):`<div class="empty-note">Add a payroll profile or recurring bills to build the forecast.</div>`}</div><div class="range-note">Forecasts use expected after-tax payroll, current recurring bills, and current goal allocation rules. They do not invent future day-to-day purchases.</div>`;
+}
+
+/* ================= Dashboard ================= */
+let incomeChartInstance, pieChartInstance, barChartInstance;
+function populateMonthFilter(){
+const sel = document.getElementById("monthFilter");
+const months = Array.from(new Set(DATA.paychecks.map(p=>monthKey(p.date)).concat(DATA.expenses.map(e=>monthKey(e.date))))).filter(Boolean).sort().reverse();
+const prevValue = sel.value;
+sel.innerHTML = `<option value="all">All time</option>` + months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join("");
+sel.value = months.includes(prevValue) ? prevValue : (months.length ? months[0] : "all");
+}
+document.getElementById("monthFilter").addEventListener("change", renderDashboard);
+
+function renderDashboard(){
+renderBillBanner();
+populateMonthFilter();
+const filter = document.getElementById("monthFilter").value;
+const paychecks = [...DATA.paychecks].sort((a,b)=> new Date(a.date)-new Date(b.date));
+const filteredPc = filter==="all" ? paychecks : paychecks.filter(p=>monthKey(p.date)===filter);
+const filteredExp = filter==="all" ? DATA.expenses : DATA.expenses.filter(e=>monthKey(e.date)===filter);
+
+const totalIncome = filteredPc.reduce((s,p)=>s+p.amount,0);
+const totalSaved = filteredPc.reduce((s,p)=>s + (p.allocations||[]).reduce((x,a)=>x+a.amount,0), 0);
+const totalExpenses = filteredExp.reduce((s,e)=>s+e.amount,0);
+const savingsRate = totalIncome ? (totalSaved/totalIncome*100) : 0;
+
+const allSorted = [...DATA.paychecks].sort((a,b)=> new Date(b.date)-new Date(a.date));
+let deltaPct = null, deltaDir = "flat";
+if(allSorted.length >= 2){
+const diff = allSorted[0].amount - allSorted[1].amount;
+deltaPct = allSorted[1].amount ? (diff/allSorted[1].amount*100) : 0;
+deltaDir = diff>0?"up":diff<0?"down":"flat";
+}
+const totalGoalTarget = DATA.goals.reduce((s,g)=>s+g.target,0);
+const totalGoalCurrent = DATA.goals.reduce((s,g)=>s+g.current,0);
+
+const cards = document.getElementById("statCards");
+cards.innerHTML = `
+<div class="card"><div class="stat-label">Income ${filter==="all"?"(all time)":"(selected month)"}</div><div class="stat-value">${fmt(totalIncome)}</div></div>
+<div class="card"><div class="stat-label">Last paycheck vs. prior</div><div class="stat-value">${allSorted.length ? fmt(allSorted[0].amount) : "—"}</div>
+<div class="stat-delta ${deltaDir}">${deltaPct===null ? "Not enough data yet" : (deltaPct>=0?"+":"")+deltaPct.toFixed(1)+"% vs previous paycheck"}</div></div>
+<div class="card"><div class="stat-label">Expenses ${filter==="all"?"(all time)":"(selected month)"}</div><div class="stat-value">${fmt(totalExpenses)}</div></div>
+<div class="card"><div class="stat-label">Sent to goals</div><div class="stat-value">${fmt(totalSaved)}</div><div class="stat-delta flat">${savingsRate.toFixed(1)}% of income</div></div>
+<div class="card"><div class="stat-label">Total goal progress</div><div class="stat-value">${fmt(totalGoalCurrent)}</div><div class="stat-delta flat">of ${fmt(totalGoalTarget)} targeted</div></div>
+<div class="card"><div class="stat-label">Completed goals</div><div class="stat-value">${DATA.goals.filter(g=>Number(g.target||0)>0&&Number(g.current||0)>=Number(g.target||0)).length}</div><div class="stat-delta flat">${DATA.goals.filter(g=>!(Number(g.target||0)>0&&Number(g.current||0)>=Number(g.target||0))).length} still active</div></div>
+<div class="card"><div class="stat-label">Extras available</div><div class="stat-value">${fmt(extrasBalance())}</div><div class="stat-delta flat">Goal overflow and completed-goal share</div></div>
+<div class="card"><div class="stat-label">Est. next paycheck after tax</div><div class="stat-value">${payrollEstimate()?fmt(payrollEstimate().amount):"—"}</div><div class="stat-delta flat">${payrollEstimate()?(payrollEstimate().nextDate?"Around "+payrollEstimate().nextDate:"Based on recent payroll"):"Add payroll to estimate"}</div></div>
+`;
+renderCashPlanning(); renderIncomeChart(); renderPieChart(); renderBarChart(); renderRecentTable(); renderMoneyTimeline();
+}
+function chartColors(){
+const style = getComputedStyle(document.documentElement);
+return {accent: style.getPropertyValue("--accent").trim(), text: style.getPropertyValue("--text").trim(), muted: style.getPropertyValue("--muted").trim(), border: style.getPropertyValue("--border").trim()};
+}
+function renderIncomeChart(){
+if(typeof Chart === "undefined"){ return; }
+const ctx = document.getElementById("incomeChart");
+const sorted = [...DATA.paychecks].sort((a,b)=> new Date(a.date)-new Date(b.date));
+const c = chartColors();
+if(incomeChartInstance) incomeChartInstance.destroy();
+if(!sorted.length){ ctx.getContext("2d").clearRect(0,0,ctx.width,ctx.height); return; }
+incomeChartInstance = new Chart(ctx, {
+type:"line",
+data:{labels: sorted.map(p=>p.date), datasets:[{label:"Income", data: sorted.map(p=>p.amount), borderColor:c.accent, backgroundColor:c.accent+"22", fill:true, tension:0.3, pointRadius:3}]},
+options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+scales:{x:{ticks:{color:c.muted}, grid:{color:c.border}}, y:{ticks:{color:c.muted}, grid:{color:c.border}}}}
+});
+}
+function renderPieChart(){
+if(typeof Chart === "undefined"){ return; }
+const ctx = document.getElementById("goalPieChart");
+const c = chartColors();
+const goalsWithSaving = DATA.goals.filter(g=>g.current > 0);
+document.getElementById("pieEmptyNote").style.display = goalsWithSaving.length ? "none" : "block";
+if(pieChartInstance) pieChartInstance.destroy();
+if(!goalsWithSaving.length) return;
+const palette = ["#2F9E8F","#5B8DEF","#F2A65A","#D6534F","#8E6BC1","#4FB0B0","#E0A93E"];
+pieChartInstance = new Chart(ctx, {
+type:"doughnut",
+data:{labels: goalsWithSaving.map(g=>g.name), datasets:[{data: goalsWithSaving.map(g=>g.current), backgroundColor: goalsWithSaving.map((g,i)=>palette[i%palette.length]), borderWidth:0}]},
+options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:c.text, boxWidth:12, padding:12}}}}
+});
+}
+function renderBarChart(){
+if(typeof Chart === "undefined"){ return; }
+const ctx = document.getElementById("barChart");
+const c = chartColors();
+const months = Array.from(new Set(DATA.paychecks.map(p=>monthKey(p.date)))).sort();
+if(barChartInstance) barChartInstance.destroy();
+if(!months.length) return;
+const incomeByMonth = months.map(m=> DATA.paychecks.filter(p=>monthKey(p.date)===m).reduce((s,p)=>s+p.amount,0));
+const savedByMonth = months.map(m=> DATA.paychecks.filter(p=>monthKey(p.date)===m).reduce((s,p)=>s+(p.allocations||[]).reduce((x,a)=>x+a.amount,0),0));
+barChartInstance = new Chart(ctx, {
+type:"bar",
+data:{labels: months.map(m=> new Date(m+"-02").toLocaleDateString(undefined,{month:"short", year:"2-digit"})),
+datasets:[{label:"Income", data: incomeByMonth, backgroundColor: c.accent+"CC"},{label:"Saved to goals", data: savedByMonth, backgroundColor: c.muted+"AA"}]},
+options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"bottom", labels:{color:c.text}}},
+scales:{x:{ticks:{color:c.muted}, grid:{display:false}}, y:{ticks:{color:c.muted}, grid:{color:c.border}}}}
+});
+}
+function renderRecentTable(){
+const tbody = document.querySelector("#recentTable tbody");
+tbody.innerHTML = "";
+const sorted = [...DATA.paychecks].sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,6);
+document.getElementById("recentEmpty").style.display = sorted.length ? "none" : "block";
+sorted.forEach(pc=>{
+const autoSaved = (pc.allocations||[]).reduce((s,a)=>s+a.amount,0);
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${pc.date}</td><td>${pc.source||"—"}</td><td>${fmt(pc.amount)}</td><td>${fmt(autoSaved)}</td>`;
+tbody.appendChild(tr);
+});
+}
+
+/* ================= Monthly money timeline ================= */
+function addDaysDate(dateStr,days){ const d=parseDateOnly(dateStr); if(!d)return null; d.setDate(d.getDate()+days); return todaySafeDate(d); }
+function populateTimelineMonthFilter(){
+  const sel=document.getElementById("timelineMonthFilter"); if(!sel)return; const now=parseDateOnly(todayStr()); const months=[]; for(let i=-1;i<=5;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);} const prev=sel.value;sel.innerHTML=months.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join("");sel.value=months.includes(prev)?prev:todayMonthKey();
+}
+function projectedPayDates(profile,month){
+  const est=payrollEstimate(profile.id); if(!est||!est.cadenceDays)return[]; const startMonth=parseDateOnly(month+"-01"),end=new Date(startMonth.getFullYear(),startMonth.getMonth()+1,0); let d=parseDateOnly(est.nextDate);
+  if(!d){d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+est.cadenceDays);} let guard=0; while(d<startMonth&&guard<60){d.setDate(d.getDate()+est.cadenceDays);guard++;} const out=[]; while(d<=end&&guard<100){out.push(todaySafeDate(d));d=new Date(d);d.setDate(d.getDate()+est.cadenceDays);guard++;} return out;
+}
+function billPaidForMonth(billId,m){return DATA.billPayments.some(p=>p.billId===billId&&p.monthKey===m);}
+function renderMoneyTimeline(){
+  const box=document.getElementById("moneyTimeline");if(!box)return;populateTimelineMonthFilter();const month=document.getElementById("timelineMonthFilter").value,events=[];
+  DATA.paychecks.filter(p=>monthKey(p.date)===month).forEach(p=>{events.push({date:p.date,title:`Paycheck · ${p.source||"Income"}`,sub:"Actual after-tax payroll",amount:Number(p.amount||0),kind:"income"});const saved=(p.allocations||[]).reduce((s,a)=>s+Number(a.amount||0),0);if(saved)events.push({date:p.date,title:"Goal transfers",sub:"Actual automatic goal allocations",amount:-saved,kind:"goal"});});
+  DATA.payrollProfiles.forEach(profile=>{const est=payrollEstimate(profile.id);if(!est)return;projectedPayDates(profile,month).forEach(date=>{const already=DATA.paychecks.some(p=>p.date===date&&(p.profileId===profile.id||p.source===profile.name));if(already)return;events.push({date,title:`Expected paycheck · ${profile.name}`,sub:`Projected ${est.confidence.label.toLowerCase()}-confidence take-home`,amount:est.amount,kind:"income"});const pct=goalAllocationTotal();if(pct<=100){const goalAmt=DATA.goals.reduce((s,g)=>s+Math.min(Math.max(0,Number(g.target||0)-Number(g.current||0)),est.amount*effectiveGoalPercent(g)/100),0);if(goalAmt)events.push({date,title:"Projected goal transfers",sub:`${pct.toFixed(0)}% effective allocation`,amount:-goalAmt,kind:"goal"});}});});
+  DATA.bills.forEach(b=>{const day=Math.min(Math.max(1,Number(b.dueDay||1)),new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate()),date=`${month}-${String(day).padStart(2,"0")}`;events.push({date,title:b.name||"Bill",sub:billPaidForMonth(b.id,month)?"Bill · marked paid":"Bill · due",amount:-Number(b.amount||0),kind:"bill"});});
+  DATA.expenses.filter(e=>monthKey(e.date)===month).forEach(e=>events.push({date:e.date,title:e.description||e.category||"Expense",sub:`Expense · ${e.fundingSource||"Unspecified source"}`,amount:-Number(e.amount||0),kind:"expense"}));
+  events.sort((a,b)=>a.date.localeCompare(b.date)||(b.amount-a.amount)); if(!events.length){box.innerHTML='<div class="empty-note">No events to show for this month yet.</div>';return;} let running=0;box.innerHTML='<div class="timeline">'+events.map(ev=>{running+=ev.amount;return `<div class="timeline-row"><div class="timeline-date">${ev.date}</div><div class="timeline-main"><div class="timeline-title">${escapeHtml(ev.title)}</div><div class="timeline-sub">${escapeHtml(ev.sub)}</div></div><div class="timeline-amount ${ev.amount>=0?'timeline-positive':'timeline-negative'}">${ev.amount>=0?'+':'-'}${fmt(Math.abs(ev.amount))}</div><div class="timeline-running">Running ${running>=0?'+':'-'}${fmt(Math.abs(running))}</div></div>`;}).join('')+'</div><div class="range-note">Running amount is the net cash-flow change inside the selected month, not an account balance. Goal transfers reduce spendable cash but remain part of your savings.</div>';
+}
+
+/* ================= Income by source ================= */
+function renderIncome(){
+  renderPayrollProfiles(); renderPayrollEstimate();
+  const tbody=document.querySelector("#incomeTable tbody");tbody.innerHTML="";const sorted=[...DATA.paychecks].sort((a,b)=>new Date(b.date)-new Date(a.date));document.getElementById("incomeEmpty").style.display=sorted.length?"none":"block";
+  sorted.forEach(pc=>{const autoSaved=(pc.allocations||[]).reduce((s,a)=>s+Number(a.amount||0),0),hours=(pc.regularHours!==undefined||pc.overtimeHours!==undefined)?`${Number(pc.regularHours||0).toFixed(1)} + ${Number(pc.overtimeHours||0).toFixed(1)} OT`:"—",gross=Number(pc.grossAmount)>0?fmt(pc.grossAmount):"—";const tr=document.createElement("tr");tr.innerHTML=`<td>${pc.date}</td><td>${escapeHtml(pc.source||"—")}</td><td>${hours}</td><td>${gross}</td><td>${fmt(pc.amount)}</td><td>${fmt(autoSaved)}</td><td class="row-actions"><button class="link-btn edit" onclick='openPaycheckModal(${safeInlineJson(pc)})'>Edit</button><button class="link-btn" onclick="deletePaycheck('${pc.id}')">Delete</button></td>`;tbody.appendChild(tr);});
+  const sourceTbody=document.querySelector("#sourceTable tbody");sourceTbody.innerHTML="";const sources=Array.from(new Set(DATA.paychecks.map(p=>p.source||"Unspecified")));document.getElementById("sourceEmpty").style.display=sources.length?"none":"block";sources.forEach(src=>{const list=DATA.paychecks.filter(p=>(p.source||"Unspecified")===src),total=list.reduce((s,p)=>s+Number(p.amount||0),0),avg=total/list.length,tr=document.createElement("tr");tr.innerHTML=`<td>${escapeHtml(src)}</td><td>${fmt(total)}</td><td>${list.length}</td><td>${fmt(avg)}</td>`;sourceTbody.appendChild(tr);});
+}
+
+/* ================= Reports ================= */
+function populateReportYearFilter(){
+const sel = document.getElementById("reportYearFilter");
+const years = Array.from(new Set(
+DATA.paychecks.map(p=>p.date.slice(0,4)).concat(DATA.expenses.map(e=>e.date.slice(0,4)))
+)).filter(Boolean).sort().reverse();
+const currentYear = String(new Date().getFullYear());
+if(!years.includes(currentYear)) years.unshift(currentYear);
+const prev = sel.value;
+sel.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join("");
+sel.value = years.includes(prev) ? prev : years[0];
+}
+document.getElementById("reportYearFilter") && document.getElementById("reportYearFilter").addEventListener("change", renderReports);
+
+function renderReports(){
+populateReportYearFilter();
+const year = document.getElementById("reportYearFilter").value;
+const yearPc = DATA.paychecks.filter(p=>p.date.startsWith(year));
+const yearExp = DATA.expenses.filter(e=>e.date.startsWith(year));
+
+const totalIncome = yearPc.reduce((s,p)=>s+p.amount,0);
+const totalExpenses = yearExp.reduce((s,e)=>s+e.amount,0);
+const totalSaved = yearPc.reduce((s,p)=>s+(p.allocations||[]).reduce((x,a)=>x+a.amount,0),0);
+const netCashflow = totalIncome - totalExpenses - totalSaved;
+const savingsRate = totalIncome ? (totalSaved/totalIncome*100) : 0;
+
+document.getElementById("reportStats").innerHTML = `
+<div class="card"><div class="stat-label">Total income</div><div class="stat-value">${fmt(totalIncome)}</div></div>
+<div class="card"><div class="stat-label">Total expenses</div><div class="stat-value">${fmt(totalExpenses)}</div></div>
+<div class="card"><div class="stat-label">Total saved to goals</div><div class="stat-value">${fmt(totalSaved)}</div><div class="stat-delta flat">${savingsRate.toFixed(1)}% savings rate</div></div>
+<div class="card"><div class="stat-label">Net cashflow</div><div class="stat-value">${fmt(netCashflow)}</div></div>
+`;
+
+const monthsInYear = Array.from({length:12}, (_,i)=> year+"-"+String(i+1).padStart(2,"0"));
+const mTbody = document.querySelector("#reportMonthlyTable tbody");
+mTbody.innerHTML = "";
+monthsInYear.forEach(m=>{
+const inc = yearPc.filter(p=>monthKey(p.date)===m).reduce((s,p)=>s+p.amount,0);
+const exp = yearExp.filter(e=>monthKey(e.date)===m).reduce((s,e)=>s+e.amount,0);
+const sav = yearPc.filter(p=>monthKey(p.date)===m).reduce((s,p)=>s+(p.allocations||[]).reduce((x,a)=>x+a.amount,0),0);
+if(inc===0 && exp===0 && sav===0) return;
+const net = inc-exp-sav;
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${monthLabel(m)}</td><td>${fmt(inc)}</td><td>${fmt(exp)}</td><td>${fmt(sav)}</td><td style="font-weight:650;">${fmt(net)}</td>`;
+mTbody.appendChild(tr);
+});
+
+const catTotals = {};
+yearExp.forEach(e=>{ catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
+const catRows = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+const cTbody = document.querySelector("#reportCategoryTable tbody");
+cTbody.innerHTML = "";
+document.getElementById("reportCategoryEmpty").style.display = catRows.length ? "none" : "block";
+catRows.forEach(([cat, total])=>{
+const tr = document.createElement("tr");
+tr.innerHTML = `<td>${cat}</td><td>${fmt(total)}</td>`;
+cTbody.appendChild(tr);
+});
+}
+
+/* ================= Settings ================= */
+const ACCENT_OPTIONS = ["#2F9E8F","#5B8DEF","#D6534F","#F2A65A","#8E6BC1","#4FB0B0","#3E6B8A"];
+function renderSettings(){
+const row = document.getElementById("swatchRow");
+row.innerHTML = ACCENT_OPTIONS.map(color=>`<span class="swatch ${DATA.settings.accent===color?'selected':''}" style="background:${color}" onclick="setAccent('${color}')"></span>`).join("");
+document.getElementById("darkToggle").classList.toggle("on", DATA.settings.darkMode);
+document.getElementById("autoSaveToggle").classList.toggle("on", DATA.settings.autoSaveEnabled);
+document.getElementById("currencyInput").value = DATA.settings.currency;
+const completedBehavior=document.getElementById("completedGoalBehavior"); if(completedBehavior) completedBehavior.value=DATA.settings.completedGoalBehavior||"extras";
+const completionNotice=document.getElementById("goalCompletionNotice"); if(completionNotice) completionNotice.value=DATA.settings.goalCompletionNotice||"toast_badge";
+const openingBalance=document.getElementById("openingSpendableBalance"); if(openingBalance) openingBalance.value=Number(DATA.settings.openingSpendableBalance||0).toFixed(2);
+document.getElementById("pinToggle").classList.toggle("on", !!DATA.settings.pinEnabled);
+document.getElementById("pinSetupRow").style.display = "block";
+document.getElementById("recoveryQuestion").value = DATA.settings.recoveryQuestion || "";
+document.getElementById("recoveryAnswer").value = "";
+document.getElementById("recoveryKeyDisplay").textContent = DATA.settings.recoveryKey || "Not generated";
+}
+function saveOpeningSpendableBalance(){
+  const el=document.getElementById("openingSpendableBalance"),value=parseFloat(el?.value);
+  if(isNaN(value)||value<0){showToast("Enter a valid opening balance of 0 or more.");return;}
+  DATA.settings.openingSpendableBalance=Math.round(value*100)/100;saveData();renderSettings();renderDashboard();renderTransactions();showToast("Opening spendable balance updated.");
+}
+function saveGoalCompletionSettings(){
+const behavior=document.getElementById("completedGoalBehavior")?.value||"extras";
+const notice=document.getElementById("goalCompletionNotice")?.value||"toast_badge";
+DATA.settings.completedGoalBehavior=["extras","pause","unassigned"].includes(behavior)?behavior:"extras";
+DATA.settings.goalCompletionNotice=["toast_badge","badge","toast"].includes(notice)?notice:"toast_badge";
+saveData(); renderGoals(); renderDashboard(); showToast("Goal completion settings updated.");
+}
+function setAccent(color){ DATA.settings.accent = color; saveData(); applyTheme(); renderSettings(); renderDashboard(); }
+function toggleDarkMode(){ DATA.settings.darkMode = !DATA.settings.darkMode; saveData(); applyTheme(); renderSettings(); renderDashboard(); }
+function toggleAutoSave(){ DATA.settings.autoSaveEnabled = !DATA.settings.autoSaveEnabled; saveData(); renderSettings(); showToast(DATA.settings.autoSaveEnabled ? "Auto-save turned on." : "Auto-save turned off."); }
+function saveCurrency(){ const val = document.getElementById("currencyInput").value.trim() || "$"; DATA.settings.currency = val; saveData(); renderAll(); showToast("Currency updated."); }
+function togglePinLock(){
+if(DATA.settings.pinEnabled){
+DATA.settings.pinEnabled = false; unlocked = true; saveData(); renderSettings(); showLockIfNeeded(); showToast("PIN lock turned off."); return;
+}
+if(!/^\d{4,6}$/.test(String(DATA.settings.pin||""))){
+DATA.settings.pinEnabled = false; saveData(); renderSettings(); showToast("Set a valid PIN first. The lock was not enabled."); return;
+}
+DATA.settings.pinEnabled = true; saveData(); renderSettings(); showToast("PIN lock turned on.");
+}
+function savePin(){
+const val = document.getElementById("pinSetupInput").value;
+if(!/^\d{4,6}$/.test(val)){ showToast("PIN must be 4–6 digits."); return; }
+DATA.settings.pin = val;
+DATA.settings.pinEnabled = true;
+if(!DATA.settings.recoveryKey) DATA.settings.recoveryKey = makeRecoveryKey();
+unlocked = true;
+saveData(); renderSettings();
+document.getElementById("pinSetupInput").value = "";
+showToast("PIN saved and lock enabled.");
+}
+function makeRecoveryKey(){
+const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const bytes = new Uint8Array(12);
+if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes); else for(let i=0;i<bytes.length;i++) bytes[i]=Math.floor(Math.random()*256);
+let out=""; for(let i=0;i<12;i++){ out += chars[bytes[i]%chars.length]; if(i===3||i===7) out+="-"; }
+return "LEDGER-"+out;
+}
+function generateAndSaveRecoveryKey(){
+DATA.settings.recoveryKey = makeRecoveryKey(); saveData(); renderSettings(); showToast("Recovery key generated.");
+}
+async function copyRecoveryKey(){
+const key=DATA.settings.recoveryKey||""; if(!key){ showToast("Generate a recovery key first."); return; }
+try{ await navigator.clipboard.writeText(key); showToast("Recovery key copied."); }catch(e){ showToast("Copy failed. Select the key and copy it manually."); }
+}
+function normalizeAnswer(v){ return String(v||"").trim().toLowerCase().replace(/\s+/g," "); }
+function saveRecoveryQuestion(){
+const question=document.getElementById("recoveryQuestion").value;
+const answer=document.getElementById("recoveryAnswer").value;
+if(!question || normalizeAnswer(answer).length<2){ showToast("Choose a question and enter an answer."); return; }
+DATA.settings.recoveryQuestion=question; DATA.settings.recoveryAnswer=normalizeAnswer(answer); saveData(); document.getElementById("recoveryAnswer").value=""; showToast("Recovery question saved.");
+}
+function openRecoveryModal(){
+const q=DATA.settings.recoveryQuestion||"";
+const hasKey=!!DATA.settings.recoveryKey;
+document.getElementById("recoveryQuestionPrompt").textContent = q ? q : "Recovery key";
+document.getElementById("recoveryHelp").textContent = q && hasKey ? "Enter either your recovery key or the answer to the question below." : q ? "Enter the answer to your recovery question." : hasKey ? "Enter your recovery key." : "No recovery method was configured for this PIN.";
+document.getElementById("recoveryInput").value="";
+document.getElementById("recoveryError").textContent="";
+openModal("recoveryModalOverlay");
+}
+function recoverAccess(){
+const input=document.getElementById("recoveryInput").value.trim();
+const keyOk=DATA.settings.recoveryKey && input.toUpperCase()===String(DATA.settings.recoveryKey).toUpperCase();
+const answerOk=DATA.settings.recoveryAnswer && normalizeAnswer(input)===normalizeAnswer(DATA.settings.recoveryAnswer);
+if(!keyOk && !answerOk){ document.getElementById("recoveryError").textContent="Recovery information did not match."; return; }
+DATA.settings.pinEnabled=false; DATA.settings.pin=""; unlocked=true; saveData(); closeModal("recoveryModalOverlay"); showLockIfNeeded(); showToast("Recovered. Set a new PIN in Settings.");
+}
+function applyTheme(){
+document.documentElement.style.setProperty("--accent", DATA.settings.accent);
+document.body.setAttribute("data-mode", DATA.settings.darkMode ? "dark" : "light");
+}
+
+/* ================= Export / Import / CSV ================= */
+function exportData(){
+const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:"application/json"});
+const url = URL.createObjectURL(blob);
+const a = document.createElement("a");
+a.href = url; a.download = "ledger-backup-" + todayStr() + ".json";
+document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+showToast("Backup downloaded.");
+}
+function importData(event){
+const file = event.target.files[0];
+if(!file) return;
+const reader = new FileReader();
+reader.onload = function(e){
+try{
+const parsed = JSON.parse(e.target.result);
+if(!parsed.paychecks || !parsed.goals || !parsed.settings){ showToast("That file doesn't look like a Ledger backup."); return; }
+if(!confirm("Import this backup? It will replace all data currently in this browser.")) return;
+DATA = normalizeData(parsed);
+unlocked = !DATA.settings.pinEnabled;
+saveData(); applyTheme(); renderAll(); showLockIfNeeded();
+showToast("Backup imported.");
+}catch(err){ showToast("Couldn't read that file."); }
+};
+reader.readAsText(file);
+event.target.value = "";
+}
+function csvEscape(v){
+const s = String(v===undefined||v===null?"":v);
+return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function exportCSV(){
+const rows = [["Date","Type","Category or Source","Description","Amount","Paid From","Counted In Budget","Note"]];
+DATA.paychecks.forEach(p=> rows.push([p.date, "Income", p.source||"", "", p.amount, "", "", ""]));
+DATA.expenses.forEach(e=> rows.push([e.date, "Expense", e.category||"", e.description||"", -Math.abs(e.amount), e.fundingSource||"", e.countTowardBudget===false?"No":"Yes", e.note||""]));
+(DATA.extrasTransactions||[]).forEach(t=>rows.push([t.date,"Extras "+(t.amount>=0?"Deposit":"Withdrawal"),t.source||"Extras",t.note||"",t.amount,"Extras","Internal transfer",t.linkType?`${t.linkType}:${t.linkId||""}`:""]));
+const csv = rows.map(r=>r.map(csvEscape).join(",")).join("\n");
+const blob = new Blob([csv], {type:"text/csv"});
+const url = URL.createObjectURL(blob);
+const a = document.createElement("a");
+a.href = url; a.download = "ledger-transactions-" + todayStr() + ".csv";
+document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+showToast("CSV downloaded.");
+}
+function confirmClearAll(){
+if(!confirm("This permanently erases all data stored in this browser. This cannot be undone. Continue?")) return;
+DATA = defaultData();
+unlocked = true;
+saveData(); applyTheme(); renderAll(); showLockIfNeeded();
+showToast("All data erased.");
+}
+
+/* ================= Init ================= */
+saveData(); // Persist any data migrations, including the old empty-PIN lockout fix.
+applyTheme();
+showLockIfNeeded();
+renderAll();
+</script>
+</body>
+</html>  
